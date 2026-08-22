@@ -19,6 +19,9 @@
     "build": "npm --prefix apps/web run build && npm --prefix apps/server run build",
     "preview": "npm --prefix apps/web run preview"
   },
+  "dependencies": {
+    "tsx": "^4.15.7"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2"
   }

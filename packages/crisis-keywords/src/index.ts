@@ -1,9 +1,9 @@
 import { CrisisTier, ModerationResult } from '@safespeak/shared-types'
-import { ENGLISH_TIER_2_PATTERNS, ENGLISH_TIER_1_PATTERNS } from './lists/english'
-import { HINDI_TIER_2_PATTERNS, HINDI_TIER_1_PATTERNS } from './lists/hindi'
-import { TELUGU_TIER_2_PATTERNS, TELUGU_TIER_1_PATTERNS } from './lists/telugu'
-import { TAMIL_TIER_2_PATTERNS, TAMIL_TIER_1_PATTERNS } from './lists/tamil'
-import { HARMFUL_MEDICAL_ADVICE_PATTERNS, SEVERE_ABUSE_PATTERNS, SOFT_FLAG_PATTERNS } from './lists/moderation'
+import { ENGLISH_TIER_2_PATTERNS, ENGLISH_TIER_1_PATTERNS } from './lists/english.js'
+import { HINDI_TIER_2_PATTERNS, HINDI_TIER_1_PATTERNS } from './lists/hindi.js'
+import { TELUGU_TIER_2_PATTERNS, TELUGU_TIER_1_PATTERNS } from './lists/telugu.js'
+import { TAMIL_TIER_2_PATTERNS, TAMIL_TIER_1_PATTERNS } from './lists/tamil.js'
+import { HARMFUL_MEDICAL_ADVICE_PATTERNS, SEVERE_ABUSE_PATTERNS, SOFT_FLAG_PATTERNS } from './lists/moderation.js'
 
 export const ALL_TIER_2_PATTERNS = [
   ...ENGLISH_TIER_2_PATTERNS,
@@ -93,8 +93,8 @@ export function evaluateModeration(text: string): ModerationResult {
   return { verdict: 'clean' }
 }
 
-export * from './lists/english'
-export * from './lists/hindi'
-export * from './lists/telugu'
-export * from './lists/tamil'
-export * from './lists/moderation'
+export * from './lists/english.js'
+export * from './lists/hindi.js'
+export * from './lists/telugu.js'
+export * from './lists/tamil.js'
+export * from './lists/moderation.js'

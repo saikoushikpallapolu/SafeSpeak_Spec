@@ -7,7 +7,8 @@ hidden = [".git", "node_modules"]
 channel = "stable-24_05"
 
 [deployment]
-run = ["npm", "start"]
+build = ["npm", "run", "build"]
+run = ["node", "server.js"]
 deploymentTarget = "autoscale"
 
 [[ports]]
