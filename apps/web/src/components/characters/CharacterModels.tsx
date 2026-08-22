@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Mesh, Group, MeshStandardMaterial, Color, Box3, Vector3, Object3D, AnimationMixer, AnimationAction, LoopRepeat } from 'three'
+import { Mesh, Group, MeshStandardMaterial, Color, Box3, Vector3, Object3D, AnimationMixer, LoopRepeat } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 /* ── Shared Material factory for procedural fallbacks ── */
@@ -73,12 +73,16 @@ export function GLBModel({
           scene.scale.setScalar(scale)
 
           scene.traverse((child) => {
-            if ((child as Mesh).isMesh) {
-              child.castShadow = true
-              child.receiveShadow = true
-              // Make sure materials look crisp in black/white ambient lighting
-              if (child.material) {
-                child.material.needsUpdate = true
+            const mesh = child as Mesh
+            if (mesh.isMesh) {
+              mesh.castShadow = true
+              mesh.receiveShadow = true
+              if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                  mesh.material.forEach(m => { m.needsUpdate = true })
+                } else {
+                  mesh.material.needsUpdate = true
+                }
               }
             }
           })

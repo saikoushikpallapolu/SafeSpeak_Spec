@@ -6,7 +6,7 @@ export default function Splash() {
   const navigate = useNavigate()
   const starCount = 36
 
-  const stars = Array.from({ length: starCount }, (_, i) => ({
+  const stars = Array.from({ length: starCount }, () => ({
     left: `${Math.random() * 100}%`,
     top: `${Math.random() * 100}%`,
     animationDelay: `${Math.random() * 6}s`,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
@@ -7,7 +7,7 @@ import { CHARACTERS } from '../data/characters'
 import { CharacterModelRenderer } from '../components/characters/CharacterModels'
 import './Characters.css'
 
-const slideVariants = {
+const slideVariants: any = {
   enter: (direction: number) => ({
     x: direction > 0 ? 300 : -300,
     opacity: 0,
