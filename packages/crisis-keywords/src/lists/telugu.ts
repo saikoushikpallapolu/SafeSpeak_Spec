@@ -12,7 +12,7 @@ export const TELUGU_TIER_2_PATTERNS = [
 
   // Tenglish / Latin Script
   /\b(chanipovalani undi|chanipothanu|chanipovali|chanipovali anipistondi)\b/i,
-  /\b(chachipothanu|chachipovali|chachipovalani|chachi povalani|chavalanipistondi)\b/i,
+  /\b(chachipothanu|chachipovali|chachipovalani|chachi povalani|chavalanipist[ou]ndi)\b/i,
   /\b(aathmahathya|athma hathya|suicide chesukunta)\b/i,
   /\b(brathakalani ledu|bratakalani ledhu|jeevitham waste)\b/i,
   /\b(jeevitham aipoindi|pranam theesukunta|pranam theesukovali)\b/i,

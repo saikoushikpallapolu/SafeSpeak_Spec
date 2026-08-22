@@ -1,20 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getSocket } from '../services/socket'
-import type { CharacterId, ChatMessage, CheckInAnswers, MatchFoundPayload, ReflectionSummary } from '@safespeak/shared-types'
+import type { CharacterId, ChatMessage, CheckInAnswers, MatchFoundPayload, ReflectionSummary, ThemedRoomId } from '@safespeak/shared-types'
 
 // Hook for 1:1 Matching Queue
 export function useMatching(onMatchFound?: (payload: MatchFoundPayload) => void) {
   const [isSearching, setIsSearching] = useState(false)
   const [matchData, setMatchData] = useState<MatchFoundPayload | null>(null)
   const socket = getSocket()
+  const onMatchFoundRef = useRef(onMatchFound)
+
+  useEffect(() => {
+    onMatchFoundRef.current = onMatchFound
+  }, [onMatchFound])
 
   useEffect(() => {
     const handleMatchFound = (payload: MatchFoundPayload) => {
+      console.log('[SafeSpeak Frontend] Received match_found payload:', payload)
       setIsSearching(false)
       setMatchData(payload)
       sessionStorage.setItem('current_match', JSON.stringify(payload))
-      if (onMatchFound) {
-        onMatchFound(payload)
+      if (onMatchFoundRef.current) {
+        onMatchFoundRef.current(payload)
       }
     }
 
@@ -23,12 +29,16 @@ export function useMatching(onMatchFound?: (payload: MatchFoundPayload) => void)
     return () => {
       socket.off('match_found', handleMatchFound)
     }
-  }, [socket, onMatchFound])
+  }, [socket])
 
   const joinQueue = useCallback((characterId: CharacterId, checkin: CheckInAnswers) => {
     setIsSearching(true)
+    sessionStorage.removeItem('current_match')
+    const charTag = `${characterId.charAt(0).toUpperCase() + characterId.slice(1)}#${Math.floor(1000 + Math.random() * 9000)}`
+    console.log('[SafeSpeak Frontend] Emitting join_queue for character:', characterId)
     socket.emit('join_queue', {
       characterId,
+      characterTag: charTag,
       checkin,
       preferredLanguages: checkin.languages || ['English'],
     })
@@ -49,6 +59,7 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
   const [crisisAlert, setCrisisAlert] = useState<{ tier: number; reason: string } | null>(null)
   const [nudgeAlert, setNudgeAlert] = useState<{ tier: number; triggerWord: string } | null>(null)
   const [moderationBlocked, setModerationBlocked] = useState<{ reason: string; category?: string } | null>(null)
+  const [peerLeft, setPeerLeft] = useState<{ hasLeft: boolean; reason?: string } | null>(null)
   const [reflectionSummary, setReflectionSummary] = useState<ReflectionSummary | null>(null)
   const socket = getSocket()
 
@@ -84,6 +95,13 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
       setModerationBlocked(data)
     }
 
+    const handlePeerLeft = (data: { reason?: string }) => {
+      setPeerLeft({
+        hasLeft: true,
+        reason: data.reason || 'Your conversation partner has left the chat.',
+      })
+    }
+
     const handleChatEnded = ({ summary }: { summary: ReflectionSummary }) => {
       setReflectionSummary(summary)
       sessionStorage.setItem('reflection_summary', JSON.stringify(summary))
@@ -94,6 +112,7 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
     socket.on('crisis_alert', handleCrisisAlert)
     socket.on('nudge_alert', handleNudgeAlert)
     socket.on('moderation_blocked', handleModerationBlocked)
+    socket.on('peer_left', handlePeerLeft)
     socket.on('chat_ended', handleChatEnded)
 
     return () => {
@@ -102,6 +121,7 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
       socket.off('crisis_alert', handleCrisisAlert)
       socket.off('nudge_alert', handleNudgeAlert)
       socket.off('moderation_blocked', handleModerationBlocked)
+      socket.off('peer_left', handlePeerLeft)
       socket.off('chat_ended', handleChatEnded)
     }
   }, [socket, roomId, myCharacterId, myTag, language])
@@ -123,6 +143,11 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
     socket.emit('typing_stop', { roomId })
   }, [socket, roomId])
 
+  const leaveChat = useCallback(() => {
+    socket.emit('leave_chat', { roomId })
+    sessionStorage.removeItem('current_match')
+  }, [socket, roomId])
+
   const endChat = useCallback(() => {
     socket.emit('end_chat', { roomId })
   }, [socket, roomId])
@@ -131,41 +156,51 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
     setNudgeAlert(null)
   }, [])
 
+  const resetChat = useCallback(() => {
+    setMessages([])
+    setPeerLeft(null)
+    sessionStorage.removeItem('current_match')
+  }, [])
+
   return {
     messages,
     isPeerTyping,
     crisisAlert,
     nudgeAlert,
     moderationBlocked,
+    peerLeft,
     reflectionSummary,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
+    leaveChat,
     endChat,
     dismissNudge,
+    resetChat,
   }
 }
 
 // Hook for Themed Group Rooms
-export function useGroupRoom(roomId: string, characterId: CharacterId, tag: string) {
+export function useGroupRoom(roomId: ThemedRoomId, myCharacterId: CharacterId, myTag: string, language: string = 'English') {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [activeCount, setActiveCount] = useState(8)
+  const [participantCount, setParticipantCount] = useState(5)
   const [crisisAlert, setCrisisAlert] = useState<{ tier: number; reason: string } | null>(null)
   const socket = getSocket()
 
   useEffect(() => {
-    socket.emit('join_group_room', { roomId, character: characterId, tag })
+    socket.emit('join_group_room', {
+      roomId,
+      character: myCharacterId,
+      tag: myTag,
+      language,
+    })
 
     const handleNewMessage = (msg: ChatMessage) => {
-      if (msg.roomId === roomId) {
-        setMessages((prev) => [...prev, msg])
-      }
+      setMessages((prev) => [...prev, msg])
     }
 
-    const handleRoomCount = (data: { roomId: string; count: number }) => {
-      if (data.roomId === roomId) {
-        setActiveCount(data.count)
-      }
+    const handleRoomCount = ({ count }: { count: number }) => {
+      setParticipantCount(count)
     }
 
     const handleCrisisAlert = (data: { tier: number; reason: string }) => {
@@ -182,7 +217,7 @@ export function useGroupRoom(roomId: string, characterId: CharacterId, tag: stri
       socket.off('group_room_count', handleRoomCount)
       socket.off('crisis_alert', handleCrisisAlert)
     }
-  }, [socket, roomId, characterId, tag])
+  }, [socket, roomId, myCharacterId, myTag, language])
 
   const sendGroupMessage = useCallback((text: string) => {
     if (!text.trim()) return
@@ -192,15 +227,10 @@ export function useGroupRoom(roomId: string, characterId: CharacterId, tag: stri
     })
   }, [socket, roomId])
 
-  return {
-    messages,
-    activeCount,
-    crisisAlert,
-    sendGroupMessage,
-  }
+  return { messages, participantCount, activeCount: participantCount, crisisAlert, sendGroupMessage }
 }
 
-// Hook for Browser Speech STT & TTS
+// Hook for Web Speech API (STT & TTS)
 export function useSpeechVoice() {
   const [isRecording, setIsRecording] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -211,14 +241,8 @@ export function useSpeechVoice() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition()
-      recognition.continuous = false
+      recognition.continuous = true
       recognition.interimResults = true
-      recognition.lang = 'en-IN' // Supports mixed English/Indian dialects
-
-      recognition.onstart = () => {
-        setIsRecording(true)
-        setError(null)
-      }
 
       recognition.onresult = (event: any) => {
         let current = ''
@@ -228,10 +252,9 @@ export function useSpeechVoice() {
         setTranscript(current)
       }
 
-      recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error:', event.error)
-        setError(event.error)
-        setIsRecording(false)
+      recognition.onerror = (err: any) => {
+        console.warn('Speech Recognition notice:', err.error)
+        setError('Voice note recorded. You can edit text before sending.')
       }
 
       recognition.onend = () => {
@@ -242,34 +265,39 @@ export function useSpeechVoice() {
     }
   }, [])
 
-  const startListening = useCallback((langCode: string = 'en-IN') => {
+  const startListening = useCallback((lang: string = 'en-IN') => {
+    setError(null)
+    setTranscript('')
     if (recognitionRef.current) {
-      setTranscript('')
-      recognitionRef.current.lang = langCode
       try {
+        recognitionRef.current.lang = lang
         recognitionRef.current.start()
-      } catch (e) {
-        console.warn('Recognition already started')
+        setIsRecording(true)
+      } catch (err) {
+        console.warn('Voice start warning:', err)
       }
-    } else {
-      setError('Browser does not support Speech Recognition. You can type instead.')
     }
   }, [])
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop()
+      try {
+        recognitionRef.current.stop()
+      } catch (err) {
+        console.warn('Voice stop warning:', err)
+      }
     }
     setIsRecording(false)
   }, [])
 
-  const speakText = useCallback((text: string, lang: string = 'en-US') => {
+  const speakText = useCallback((text: string, lang: string = 'English') => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = lang === 'Hindi' ? 'hi-IN' : lang === 'Telugu' ? 'te-IN' : lang === 'Tamil' ? 'ta-IN' : 'en-US'
-      utterance.rate = 0.95
-      utterance.pitch = 1.0
+      if (lang === 'Hindi') utterance.lang = 'hi-IN'
+      else if (lang === 'Telugu') utterance.lang = 'te-IN'
+      else if (lang === 'Tamil') utterance.lang = 'ta-IN'
+      else utterance.lang = 'en-IN'
       window.speechSynthesis.speak(utterance)
     }
   }, [])

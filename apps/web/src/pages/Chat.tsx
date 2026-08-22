@@ -35,6 +35,7 @@ export default function Chat() {
   const [activeLang, setActiveLang] = useState(initialLang)
   const [showLangDropdown, setShowLangDropdown] = useState(false)
   const [isMuted, setIsMuted] = useState(soundFx.isMuted())
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [input, setInput] = useState('')
   const [showOriginalMap, setShowOriginalMap] = useState<Record<string, boolean>>({})
   const [inAppNudge, setInAppNudge] = useState(false)
@@ -48,12 +49,15 @@ export default function Chat() {
     crisisAlert,
     nudgeAlert,
     moderationBlocked,
+    peerLeft,
     reflectionSummary,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
+    leaveChat,
     endChat,
     dismissNudge,
+    resetChat,
   } = useChat(roomId, myId, myTag, activeLang)
 
   // Scroll to bottom on new message & play chime for peer
@@ -111,11 +115,25 @@ export default function Chat() {
     setIsMuted(muted)
   }
 
-  const handleEndChat = () => {
+  const handleConfirmEnd = () => {
     endChat()
+    leaveChat()
+    resetChat()
     setTimeout(() => {
       navigate('/reflection')
-    }, 600)
+    }, 500)
+  }
+
+  const handleFindNewMatch = () => {
+    resetChat()
+    sessionStorage.removeItem('current_match')
+    navigate('/matching')
+  }
+
+  const handleGoToRooms = () => {
+    resetChat()
+    sessionStorage.removeItem('current_match')
+    navigate('/rooms')
   }
 
   const toggleOriginal = (msgId: string) => {
@@ -199,7 +217,7 @@ export default function Chat() {
             </svg>
           </button>
           
-          <button className="btn btn-ghost chat-header__btn" onClick={handleEndChat} aria-label="End chat" title="End Conversation">
+          <button className="btn btn-ghost chat-header__btn" onClick={() => setShowExitConfirm(true)} aria-label="End chat" title="End Conversation">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3 9l12 0M11 5l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -353,12 +371,14 @@ export default function Chat() {
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder={`Type in any language (translated to ${activeLang})…`}
             aria-label="Message input"
+            disabled={Boolean(peerLeft)}
           />
           <button
             className="chat-input__voice"
             onClick={() => navigate(`/chat/${roomId}/voice`)}
             aria-label="Voice input"
             title="Speak voice note"
+            disabled={Boolean(peerLeft)}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <rect x="6.5" y="1.5" width="5" height="9" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
@@ -369,7 +389,7 @@ export default function Chat() {
         <motion.button
           className="chat-input__send"
           onClick={handleSend}
-          disabled={!input.trim()}
+          disabled={!input.trim() || Boolean(peerLeft)}
           whileTap={{ scale: 0.9 }}
           aria-label="Send message"
         >
@@ -378,6 +398,66 @@ export default function Chat() {
           </svg>
         </motion.button>
       </div>
+
+      {/* Peer Left Modal / Card */}
+      <AnimatePresence>
+        {peerLeft && (
+          <div className="chat-peer-left-backdrop">
+            <motion.div
+              className="chat-peer-left-card"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+            >
+              <div className="peer-left-avatar">{other.emoji}</div>
+              <h2 className="peer-left-title font-display">Conversation Concluded</h2>
+              <p className="peer-left-body font-body">
+                Your conversation partner has left the chat. Every session on SafeSpeak is strictly one-time and unlinked. Nothing has been saved.
+              </p>
+              <div className="peer-left-actions">
+                <button className="btn btn-primary" onClick={handleFindNewMatch}>
+                  <span>⚡ Find a New Match</span>
+                </button>
+                <button className="btn btn-secondary" onClick={handleGoToRooms}>
+                  <span>🌐 Join a Themed Room</span>
+                </button>
+                <button className="btn btn-ghost font-mono" onClick={() => navigate('/reflection')}>
+                  View Reflection Card →
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Exit Confirmation Modal */}
+      <AnimatePresence>
+        {showExitConfirm && (
+          <div className="chat-exit-backdrop" onClick={() => setShowExitConfirm(false)}>
+            <motion.div
+              className="chat-exit-card"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#FFFFFF' }}>End this conversation?</h3>
+              <p className="font-body" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '8px 0 16px' }}>
+                Your chat with this person will permanently close and no messages are retained. You can start fresh with a new match anytime.
+              </p>
+              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowExitConfirm(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleConfirmEnd}>
+                  End Session
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

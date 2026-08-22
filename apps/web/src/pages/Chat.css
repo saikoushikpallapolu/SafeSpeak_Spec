@@ -443,6 +443,11 @@
   border-color: var(--color-border-bright);
 }
 
+.chat-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .chat-input__voice {
   position: absolute;
   right: var(--space-3);
@@ -457,8 +462,13 @@
   transition: color var(--dur-base);
 }
 
-.chat-input__voice:hover {
+.chat-input__voice:hover:not(:disabled) {
   color: #FFFFFF;
+}
+
+.chat-input__voice:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .chat-input__send {
@@ -483,4 +493,94 @@
 
 .chat-input__send:not(:disabled):hover {
   opacity: 0.9;
+}
+
+/* Peer Left Modal */
+.chat-peer-left-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+}
+
+.chat-peer-left-card {
+  background: #141414;
+  border: 1px solid var(--color-border-bright);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8) var(--space-6);
+  max-width: 440px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 255, 255, 0.05);
+}
+
+.peer-left-avatar {
+  font-size: 2.75rem;
+  background: #1C1C1C;
+  border: 1px solid var(--color-border);
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.peer-left-title {
+  font-size: 1.35rem;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.peer-left-body {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.peer-left-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.peer-left-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Exit Confirmation Backdrop */
+.chat-exit-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.chat-exit-card {
+  background: #161616;
+  border: 1px solid var(--color-border-bright);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 }

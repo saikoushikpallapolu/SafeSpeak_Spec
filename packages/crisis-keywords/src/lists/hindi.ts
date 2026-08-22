@@ -13,7 +13,7 @@ export const HINDI_TIER_2_PATTERNS = [
 
   // Hinglish / Latin Script
   /\b(marna chahta hu|marna chahti hu|marna chahta hoon|marna chahti hoon)\b/i,
-  /\b(mar jaane ka man|marne ka man kar raha|mar jau kya)\b/i,
+  /\b(mar jaane ka mann?|marne ka mann? kar raha|mar jau kya)\b/i,
   /\b(khudkushi|suicide kar|jaan de dunga|jaan dena chahta)\b/i,
   /\b(zindagi khatam|jeene ka koi matlab nahi|jeena nahi chahta|jeena nahi chahti)\b/i,
   /\b(sab khatam karna|apne aap ko khatam|khud ko maar daloonga)\b/i,
@@ -37,5 +37,5 @@ export const HINDI_TIER_1_PATTERNS = [
   /\b(bahut rona aa raha|rona aa raha hai|ro raha hu|ro rahi hu)\b/i,
   /\b(bardasht nahi ho raha|sahan nahi ho raha|handle nahi ho raha)\b/i,
   /\b(akela feel ho raha|bohot akelapan|koi sath nahi hai)\b/i,
-  /\b(himmat toot gayi|kuch samajh nahi aa raha|dimag fat raha hai)\b/i,
+  /\b(himmat toot gayi|kuch samajh nahi aa raha|dimag fat raha|dimag phat raha)\b/i,
 ]

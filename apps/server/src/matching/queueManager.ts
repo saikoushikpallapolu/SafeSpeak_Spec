@@ -7,79 +7,99 @@ interface QueueEntry {
   timeoutId: NodeJS.Timeout
 }
 
+export interface MatchFoundResult {
+  user1SocketId: string
+  user1Payload: MatchFoundPayload
+  user2SocketId?: string
+  user2Payload?: MatchFoundPayload
+}
+
 export class QueueManager {
   private queue: Map<string, QueueEntry> = new Map()
-  private onMatchFoundCallback?: (payloads: { user1Payload: MatchFoundPayload; user2Payload?: MatchFoundPayload }) => void
+  private onMatchFoundCallback?: (result: MatchFoundResult) => void
+  private fallbackDelayMs: number
 
-  constructor(onMatchFound?: (payloads: { user1Payload: MatchFoundPayload; user2Payload?: MatchFoundPayload }) => void) {
+  constructor(onMatchFound?: (result: MatchFoundResult) => void, fallbackDelayMs: number = 15000) {
     this.onMatchFoundCallback = onMatchFound
+    this.fallbackDelayMs = fallbackDelayMs
   }
 
-  public setOnMatchFound(cb: (payloads: { user1Payload: MatchFoundPayload; user2Payload?: MatchFoundPayload }) => void) {
+  public setOnMatchFound(cb: (result: MatchFoundResult) => void) {
     this.onMatchFoundCallback = cb
   }
 
   public enqueue(request: MatchRequest): void {
-    // Remove if already in queue
+    // Remove existing if any
     this.dequeue(request.socketId)
 
-    // Check if there is another user waiting
+    // Check if another real user is waiting
     const waitingEntry = this.findBestMatch(request)
 
     if (waitingEntry) {
-      // Clear their fallback timer
+      // Clear waiting user's fallback timer
       clearTimeout(waitingEntry.timeoutId)
       this.queue.delete(waitingEntry.request.socketId)
 
-      // Create live pair match
-      const roomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+      // Create live pair match between two real devices
+      const roomId = `room_live_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
       const sharedContext = this.calculateSharedContext(request, waitingEntry.request)
       const icebreaker = this.generateIcebreaker(sharedContext)
 
+      // user1 is the waiting user (sock_user1)
       const user1Payload: MatchFoundPayload = {
-        roomId,
-        peerSocketId: waitingEntry.request.socketId,
-        peerCharacter: waitingEntry.request.characterId,
-        peerTag: waitingEntry.request.characterTag,
-        peerLanguage: waitingEntry.request.preferredLanguages[0] || 'English',
-        myCharacter: request.characterId,
-        myTag: request.characterTag,
-        myLanguage: request.preferredLanguages[0] || 'English',
-        sharedContext,
-        icebreaker,
-        isSimulatedPeer: false,
-      }
-
-      const user2Payload: MatchFoundPayload = {
         roomId,
         peerSocketId: request.socketId,
         peerCharacter: request.characterId,
-        peerTag: request.characterTag,
+        peerTag: request.characterTag || 'Peer',
         peerLanguage: request.preferredLanguages[0] || 'English',
         myCharacter: waitingEntry.request.characterId,
-        myTag: waitingEntry.request.characterTag,
+        myTag: waitingEntry.request.characterTag || 'You',
         myLanguage: waitingEntry.request.preferredLanguages[0] || 'English',
         sharedContext,
         icebreaker,
         isSimulatedPeer: false,
       }
 
+      // user2 is the newcomer (sock_user2)
+      const user2Payload: MatchFoundPayload = {
+        roomId,
+        peerSocketId: waitingEntry.request.socketId,
+        peerCharacter: waitingEntry.request.characterId,
+        peerTag: waitingEntry.request.characterTag || 'Peer',
+        peerLanguage: waitingEntry.request.preferredLanguages[0] || 'English',
+        myCharacter: request.characterId,
+        myTag: request.characterTag || 'You',
+        myLanguage: request.preferredLanguages[0] || 'English',
+        sharedContext,
+        icebreaker,
+        isSimulatedPeer: false,
+      }
+
+      console.log(`[SafeSpeak Queue] Matched two real users: ${waitingEntry.request.socketId} <-> ${request.socketId} in room ${roomId}`)
+
       if (this.onMatchFoundCallback) {
-        this.onMatchFoundCallback({ user1Payload, user2Payload })
+        this.onMatchFoundCallback({
+          user1SocketId: waitingEntry.request.socketId,
+          user1Payload,
+          user2SocketId: request.socketId,
+          user2Payload,
+        })
       }
       return
     }
 
-    // No immediate match: add to queue and start 3.5s simulated peer fallback timer
+    // No immediate user: add to queue and wait before fallback
     const timeoutId = setTimeout(() => {
       this.triggerSimulatedMatch(request.socketId)
-    }, 3500)
+    }, this.fallbackDelayMs)
 
     this.queue.set(request.socketId, {
       request,
       joinedAt: Date.now(),
       timeoutId,
     })
+
+    console.log(`[SafeSpeak Queue] Socket ${request.socketId} enqueued. Total waiting: ${this.queue.size}`)
   }
 
   public dequeue(socketId: string): void {
@@ -87,6 +107,7 @@ export class QueueManager {
     if (entry) {
       clearTimeout(entry.timeoutId)
       this.queue.delete(socketId)
+      console.log(`[SafeSpeak Queue] Socket ${socketId} dequeued. Total waiting: ${this.queue.size}`)
     }
   }
 
@@ -121,15 +142,20 @@ export class QueueManager {
       peerTag,
       peerLanguage: req.preferredLanguages[0] || 'English',
       myCharacter: req.characterId,
-      myTag: req.characterTag,
+      myTag: req.characterTag || 'You',
       myLanguage: req.preferredLanguages[0] || 'English',
       sharedContext,
       icebreaker,
       isSimulatedPeer: true,
     }
 
+    console.log(`[SafeSpeak Queue] Simulated peer fallback triggered for socket ${socketId}`)
+
     if (this.onMatchFoundCallback) {
-      this.onMatchFoundCallback({ user1Payload })
+      this.onMatchFoundCallback({
+        user1SocketId: socketId,
+        user1Payload,
+      })
     }
   }
 

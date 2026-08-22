@@ -32,6 +32,13 @@ export default function Reflection() {
     soundFx.playReactionSparkle()
   }
 
+  const handleFindNewMatch = () => {
+    // Wipe past match data and chat
+    sessionStorage.removeItem('current_match')
+    sessionStorage.removeItem('reflection_summary')
+    navigate('/matching')
+  }
+
   const handleStartFresh = () => {
     // Strictly one-time: wipe all session state
     sessionStorage.clear()
@@ -60,7 +67,7 @@ export default function Reflection() {
 
         <h1 className="reflection-title font-display">That took courage.</h1>
         <p className="reflection-sub font-body">
-          Here's a gentle reflection of what came up in your conversation today.
+          Here's a gentle reflection of what came up in your conversation today. Your past chat has been completely wiped.
         </p>
 
         {/* Summary card */}
@@ -81,7 +88,7 @@ export default function Reflection() {
 
         {/* Reactions */}
         <p className="reflection-reactions-label font-body">
-          {selectedReaction ? '✨ Encouragement reaction sent to peer' : 'Leave a silent reaction for the other person?'}
+          {selectedReaction ? '✨ Encouragement reaction sent' : 'Leave a silent reaction for the other person?'}
         </p>
         <div className="reflection-reactions">
           {REACTIONS.map((r) => (
@@ -101,13 +108,16 @@ export default function Reflection() {
         </div>
 
         {/* CTA row (strictly one-time sessions) */}
-        <div className="reflection-ctas">
-          <button className="btn btn-primary" onClick={handleStartFresh}>
-            <span>Start a Fresh Session</span>
+        <div className="reflection-ctas" style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+          <button className="btn btn-primary" onClick={handleFindNewMatch}>
+            <span>⚡ Find a New Match</span>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5a5.5 5.5 0 0 1 3.9 1.6L14 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M14 2v4h-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
+          </button>
+          <button className="btn btn-secondary" onClick={handleStartFresh}>
+            <span>🔄 Change Character & Start Fresh</span>
           </button>
         </div>
 
@@ -116,11 +126,11 @@ export default function Reflection() {
           onClick={handleLeaveToRooms}
           style={{ marginTop: 'var(--space-2)' }}
         >
-          Browse themed rooms instead →
+          Browse themed group rooms instead →
         </button>
 
         <p className="reflection-privacy-note font-mono">
-          🔒 No chat history is saved. Once you leave, this session is permanently gone.
+          🔒 No chat history is saved. This previous conversation is permanently wiped from memory.
         </p>
       </motion.div>
     </div>

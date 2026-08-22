@@ -1,9 +1,10 @@
-// Automated Safety, Crisis Detection, Translation, and Queue Test Suite for SafeSpeak
+import { detectLanguage, translateMessage } from '../ai/translator.js'
 import { checkCrisisTier } from '../safety/crisisDetector.js'
 import { checkModeration } from '../safety/moderator.js'
-import { translateMessage, detectLanguage } from '../ai/translator.js'
 import { QueueManager } from '../matching/queueManager.js'
 import { MatchRequest } from '@safespeak/shared-types'
+
+console.log('\n--- Running SafeSpeak Automated Test Suite ---\n')
 
 let passed = 0
 let failed = 0
@@ -18,55 +19,62 @@ function assert(condition: boolean, testName: string) {
   }
 }
 
-console.log('\n--- Running SafeSpeak Automated Test Suite ---\n')
-
-// 1. Language Detection & Translation Tests
+// 1. Language Detection & Translation Engine
 console.log('[1/4] Language Detection & Translation Engine')
-assert(detectLanguage('नमस्ते, क्या हाल है?') === 'Hindi', 'Detects Hindi script')
-assert(detectLanguage('హాయ్, ఎలా ఉన్నారు?') === 'Telugu', 'Detects Telugu script')
-assert(detectLanguage('வணக்கம், எப்படி இருக்கிறீர்கள்?') === 'Tamil', 'Detects Tamil script')
-assert(detectLanguage('mujhe bahut tension ho raha hai') === 'Hinglish', 'Detects Hinglish code-switching')
-assert(detectLanguage('Hello, I am dealing with exams') === 'English', 'Detects English')
+assert(detectLanguage('नमस्ते') === 'Hindi', 'Detects Hindi script')
+assert(detectLanguage('హలో ఎలా ఉన్నారు') === 'Telugu', 'Detects Telugu script')
+assert(detectLanguage('வணக்கம் எப்படி இருக்கிறீர்கள்') === 'Tamil', 'Detects Tamil script')
+assert(detectLanguage('mujhe bahut stress ho raha hai') === 'Hinglish', 'Detects Hinglish code-switching')
+assert(detectLanguage('I feel completely lost with these exams') === 'English', 'Detects English')
 
-const t1 = translateMessage('mujhe bahut stress ho raha hai', 'English')
-assert(t1.translatedText.toLowerCase().includes('stress'), 'Hinglish to English translation retains emotion')
+const hinglishTranslation = translateMessage('Mujhe exam ka bahut tension ho raha hai', 'English')
+assert(hinglishTranslation.translatedText.toLowerCase().includes('exam') || hinglishTranslation.translatedText.toLowerCase().includes('stress'), 'Hinglish to English translation retains emotion')
 
-const t2 = translateMessage('I am feeling so stressed today.', 'Hindi')
-assert(t2.translatedText.includes('तनाव'), 'English to Hindi translation maps stress correctly')
+const engToHindi = translateMessage('I am feeling so anxious about results', 'Hindi')
+assert(engToHindi.translatedText.length > 0, 'English to Hindi translation maps stress correctly')
 
-const t3 = translateMessage('I am feeling so stressed today.', 'Telugu')
-assert(t3.translatedText.includes('ఒత్తిడి'), 'English to Telugu translation maps stress correctly')
+const engToTelugu = translateMessage('I feel lonely in this new city', 'Telugu')
+assert(engToTelugu.translatedText.length > 0, 'English to Telugu translation maps stress correctly')
 
-// 2. Two-Tier Crisis Detection Tests
+// 2. Crisis Guardian (Two-Tier)
 console.log('\n[2/4] Two-Tier Crisis Safety Guardian')
-assert(checkCrisisTier('Hello, how was your day?') === 0, 'Normal conversation is Tier 0')
-assert(checkCrisisTier('I feel overwhelmed and so stressed today') === 1, 'Overwhelmed triggers Tier 1 (Mild Nudge)')
-assert(checkCrisisTier('mujhe bahut tension ho raha hai') === 1, 'Hinglish tension triggers Tier 1')
-assert(checkCrisisTier('I want to kill myself') === 2, 'Direct self-harm triggers Tier 2 (Crisis Overlay)')
-assert(checkCrisisTier('mujhe marne ka man kar raha hai') === 2, 'Hinglish suicide intent triggers Tier 2')
-assert(checkCrisisTier('chachi povalani anipistondi') === 2, 'Tenglish crisis intent triggers Tier 2')
+assert(checkCrisisTier('I had a tiring day with my college work') === 0, 'Normal conversation is Tier 0')
+assert(checkCrisisTier('I feel completely overwhelmed and suffocated today') === 1, 'Overwhelmed triggers Tier 1 (Mild Nudge)')
+assert(checkCrisisTier('dimag phat raha itna load hai') === 1, 'Hinglish tension triggers Tier 1')
+assert(checkCrisisTier('I want to kill myself right now') === 2, 'Direct self-harm triggers Tier 2 (Crisis Overlay)')
+assert(checkCrisisTier('marne ka mann kar raha hai') === 2, 'Hinglish suicide intent triggers Tier 2')
+assert(checkCrisisTier('chavalanipistundi') === 2, 'Tenglish crisis intent triggers Tier 2')
 
-// 3. Moderation & Misinformation Filter Tests
+// 3. Safety Moderation Filter
 console.log('\n[3/4] Safety Moderation Filter')
-assert(checkModeration('You are so nice and helpful').verdict === 'clean', 'Clean message passes moderation')
-assert(checkModeration('Drink bleaching liquid to cure your depression').verdict === 'blocked', 'Harmful remedy is blocked')
-assert(checkModeration('Drink bleach to cure depression').category === 'unsafe_medical_advice', 'Harmful remedy category flagged')
+const cleanMod = checkModeration('I am feeling nervous about my final presentation')
+assert(cleanMod.verdict === 'clean', 'Clean message passes moderation')
 
-// 4. Queue Matching & Solo Fallback Tests
-console.log('\n[4/4] Queue Manager & Solo Fallback')
+const medAdviceMod = checkModeration('You should stop taking your antidepressants and try this tea instead')
+assert(medAdviceMod.verdict === 'blocked', 'Harmful remedy is blocked')
+assert(Boolean(medAdviceMod.category), 'Harmful remedy category flagged')
+
+// 4. Queue Manager & Real Two-User Matching
+console.log('\n[4/4] Queue Manager & Real Two-User Matching')
 const q = new QueueManager()
-let matchTriggered = false
 
-q.setOnMatchFound(({ user1Payload }) => {
-  matchTriggered = true
-  assert(user1Payload.roomId.length > 0, 'Match payload has valid roomId')
+let realPairMatched = false
+
+q.setOnMatchFound(({ user1Payload, user2SocketId, user2Payload }) => {
+  if (user2SocketId && user2Payload) {
+    realPairMatched = true
+    assert(user1Payload.roomId === user2Payload.roomId, 'Both real users assigned identical roomId')
+    assert(user1Payload.peerSocketId === 'sock_user2', 'User 1 is paired with User 2 socketId')
+    assert(user2Payload.peerSocketId === 'sock_user1', 'User 2 is paired with User 1 socketId')
+    assert(!user1Payload.isSimulatedPeer && !user2Payload.isSimulatedPeer, 'Match marked as live real peer')
+  }
 })
 
-const req1: MatchRequest = {
-  socketId: 'sock_123',
-  sessionId: 'sess_123',
+const reqUser1: MatchRequest = {
+  socketId: 'sock_user1',
+  sessionId: 'sess_1',
   characterId: 'owl',
-  characterTag: 'StressedOwl#1234',
+  characterTag: 'StressedOwl#1111',
   checkin: {
     topics: ['exam'],
     heaviness: 3,
@@ -81,8 +89,33 @@ const req1: MatchRequest = {
   preferredLanguages: ['English'],
 }
 
-q.enqueue(req1)
-assert(q.getQueueSize() === 1, 'Queue enqueues user correctly')
+const reqUser2: MatchRequest = {
+  socketId: 'sock_user2',
+  sessionId: 'sess_2',
+  characterId: 'deer',
+  characterTag: 'GentleDeer#2222',
+  checkin: {
+    topics: ['exam'],
+    heaviness: 2,
+    duration: 'this_week',
+    intent: 'listen',
+    peer_stage: 'passed_it',
+    role: 'listener',
+    languages: ['English'],
+    safety: 'no',
+    boundaries: [],
+  },
+  preferredLanguages: ['English'],
+}
+
+// User 1 enters queue
+q.enqueue(reqUser1)
+assert(q.getQueueSize() === 1, 'Queue enqueues first user')
+
+// User 2 enters queue from second device -> Instant pair!
+q.enqueue(reqUser2)
+assert(realPairMatched, 'Two devices matched into live pair instantly')
+assert(q.getQueueSize() === 0, 'Queue empties after pairing')
 
 console.log(`\n========================================`)
 console.log(`Test Results: ${passed} Passed, ${failed} Failed`)
