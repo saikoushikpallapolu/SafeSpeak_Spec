@@ -47,7 +47,12 @@ let socketInstance: Socket | MockSocket | null = null
 
 export function getSocket(): Socket | MockSocket {
   if (!socketInstance) {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:4000' : '')
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    
+    // Default to live Render backend if no custom environment variable is passed
+    const backendUrl = 
+      import.meta.env.VITE_BACKEND_URL || 
+      (isLocal ? 'http://localhost:4000' : 'https://safespeak-backend-mv7h.onrender.com')
 
     if (backendUrl) {
       try {
