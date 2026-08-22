@@ -2,10 +2,18 @@
   "name": "safespeak-workspace",
   "private": true,
   "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "install": "npm --prefix apps/web install",
-    "build": "npm --prefix apps/web run build",
-    "dev": "npm --prefix apps/web run dev",
+    "dev": "concurrently \"npm --prefix apps/server run dev\" \"npm --prefix apps/web run dev\"",
+    "dev:server": "npm --prefix apps/server run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build && npm --prefix apps/server run build",
     "preview": "npm --prefix apps/web run preview"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }

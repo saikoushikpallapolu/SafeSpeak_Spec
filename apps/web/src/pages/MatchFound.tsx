@@ -4,16 +4,24 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import { getCharacterById, CHARACTERS } from '../data/characters'
 import { CharacterModelRenderer } from '../components/characters/CharacterModels'
+import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
 import './MatchFound.css'
 
 export default function MatchFound() {
   const navigate = useNavigate()
-  const myId = sessionStorage.getItem('character') || 'owl'
-  const otherId = CHARACTERS.find(c => c.id !== myId)?.id || 'deer'
-  const me = getCharacterById(myId)!
-  const other = getCharacterById(otherId)!
 
-  const sharedContext = 'exam stress'
+  const rawMatch = sessionStorage.getItem('current_match')
+  const matchData: MatchFoundPayload | null = rawMatch ? JSON.parse(rawMatch) : null
+
+  const myId = (matchData?.myCharacter || sessionStorage.getItem('character') || 'owl') as CharacterId
+  const otherId = (matchData?.peerCharacter || CHARACTERS.find(c => c.id !== myId)?.id || 'deer') as CharacterId
+
+  const me = getCharacterById(myId) || CHARACTERS[0]
+  const other = getCharacterById(otherId) || CHARACTERS[1]
+
+  const sharedContext = matchData?.sharedContext || 'exam & study pressure'
+  const icebreaker = matchData?.icebreaker || 'How long has it been feeling this way for you?'
+  const roomId = matchData?.roomId || `room_${Date.now()}`
 
   return (
     <div className="matchfound-page">
@@ -35,7 +43,7 @@ export default function MatchFound() {
             <directionalLight position={[-2, -1, -2]} intensity={0.3} color={me.accentColor} />
             <Suspense fallback={null}><CharacterModelRenderer id={myId} hovered /></Suspense>
           </Canvas>
-          <span className="matchfound-char__label">{me.name}</span>
+          <span className="matchfound-char__label">{me.name} (You)</span>
         </motion.div>
 
         {/* Burst icon in center */}
@@ -85,21 +93,21 @@ export default function MatchFound() {
       >
         <p className="matchfound-icebreaker__label">💬 Maybe start with:</p>
         <p className="matchfound-icebreaker__text">
-          "How long has it been feeling this way for you?"
+          "{icebreaker}"
         </p>
       </motion.div>
 
       {/* CTA */}
       <motion.button
         className="btn btn-primary matchfound-cta"
-        onClick={() => navigate('/chat/demo')}
+        onClick={() => navigate(`/chat/${roomId}`)}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.8, duration: 0.4 }}
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
       >
-        Start talking
+        <span>Start talking</span>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

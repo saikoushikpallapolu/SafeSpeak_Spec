@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import SOSButton from '../components/common/SOSButton'
 import './RoomsBrowse.css'
 
 const ROOMS = [
@@ -17,16 +18,16 @@ export default function RoomsBrowse() {
   return (
     <div className="rooms-page">
       <header className="rooms-header">
-        <button className="btn btn-ghost" onClick={() => navigate(-1)}>
+        <button className="btn btn-ghost" onClick={() => navigate(-1)} aria-label="Go back">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M11 14L6 9l5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="rooms-header__title">Themed Rooms</h1>
-        <div style={{ width: 40 }} />
+        <h1 className="rooms-header__title font-display">Themed Rooms</h1>
+        <SOSButton />
       </header>
 
-      <p className="rooms-intro container">
+      <p className="rooms-intro container font-body">
         Instead of a 1:1 match, join a room built around a topic. Everyone's anonymous. Same rules apply.
       </p>
 
@@ -45,10 +46,10 @@ export default function RoomsBrowse() {
           >
             <div className="room-card__emoji">{room.emoji}</div>
             <div className="room-card__content">
-              <h2 className="room-card__name">{room.name}</h2>
-              <p className="room-card__desc">{room.desc}</p>
+              <h2 className="room-card__name font-display">{room.name}</h2>
+              <p className="room-card__desc font-body">{room.desc}</p>
             </div>
-            <div className="room-card__active">
+            <div className="room-card__active font-mono">
               <span className="room-card__dot" />
               {room.active} active
             </div>
