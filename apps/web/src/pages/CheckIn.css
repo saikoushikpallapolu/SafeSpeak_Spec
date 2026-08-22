@@ -87,7 +87,7 @@
 @media (min-width: 900px) {
   .checkin-speech-balloon-container {
     width: 100%;
-    max-width: 540px;
+    max-width: 480px;
     margin: 0 auto;
     flex: none;
   }
@@ -108,9 +108,9 @@
 
 @media (min-width: 900px) {
   .checkin-speech-balloon {
-    border-radius: 26px;
-    padding: var(--space-6) var(--space-8);
-    gap: var(--space-3);
+    border-radius: 22px;
+    padding: var(--space-5) var(--space-6);
+    gap: var(--space-2);
     box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 255, 255, 0.25);
   }
 }
@@ -135,7 +135,7 @@
 @media (min-width: 900px) {
   .checkin-mascot-author {
     font-size: var(--text-xs);
-    padding: 4px 12px;
+    padding: 3px 10px;
   }
 }
 
@@ -152,9 +152,9 @@
 }
 
 .checkin-balloon-question {
-  font-size: clamp(1.05rem, 2vw, 1.95rem);
+  font-size: clamp(1.05rem, 1.8vw, 1.45rem);
   color: #000000 !important;
-  line-height: 1.25;
+  line-height: 1.22;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -162,14 +162,14 @@
 .checkin-balloon-companion-tip {
   font-size: 11px;
   color: #4B5563 !important;
-  line-height: 1.4;
+  line-height: 1.35;
   font-style: italic;
 }
 
 @media (min-width: 900px) {
   .checkin-balloon-companion-tip {
-    font-size: var(--text-sm);
-    line-height: 1.5;
+    font-size: var(--text-xs);
+    line-height: 1.45;
   }
 }
 

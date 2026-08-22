@@ -193,13 +193,8 @@ export default function Characters() {
 
             {/* Content & Descriptions */}
             <div className="char-showcase-info">
-              <div className="char-showcase-badge-row">
-                <span className="char-animal-tag font-mono">
-                  {currentChar.emoji} {currentChar.animal.toUpperCase()}
-                </span>
-                <span className="char-anonymous-pill font-mono">
-                  Tag: {currentChar.tagPrefix}#XXXX
-                </span>
+              <div className="char-showcase-tagline-bubble">
+                <span className="char-tagline-quote">"{currentChar.tagline}"</span>
               </div>
 
               <h1 className="char-showcase-name">

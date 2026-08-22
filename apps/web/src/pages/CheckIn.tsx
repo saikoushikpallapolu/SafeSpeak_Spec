@@ -152,10 +152,20 @@ const QUESTIONS: QuestionConfig[] = [
   },
 ]
 
+const MASCOT_CHECKIN_CONFIG: Record<string, { cameraPos: [number, number, number]; fov: number }> = {
+  owl: { cameraPos: [0, -0.75, 4.4], fov: 35 },
+  capybara: { cameraPos: [0, -0.75, 4.4], fov: 35 },
+  panda: { cameraPos: [0, -0.72, 4.3], fov: 36 },
+  deer: { cameraPos: [0, -0.72, 4.3], fov: 36 },
+  rabbit: { cameraPos: [0, -0.70, 4.2], fov: 36 },
+  penguin: { cameraPos: [0, -0.65, 4.1], fov: 36 },
+}
+
 export default function CheckIn() {
   const navigate = useNavigate()
   const charId = sessionStorage.getItem('character') || 'penguin'
   const character = getCharacterById(charId) || CHARACTERS[0]
+  const mascotConfig = MASCOT_CHECKIN_CONFIG[character.id] || { cameraPos: [0, -0.72, 4.3], fov: 36 }
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({
@@ -249,7 +259,7 @@ export default function CheckIn() {
         {/* Full-Height 3D Canvas */}
         <div className="checkin-canvas-viewport">
           <Canvas
-            camera={{ position: [0, -0.42, 3.8], fov: 38 }}
+            camera={{ position: mascotConfig.cameraPos, fov: mascotConfig.fov }}
             gl={{ antialias: true, alpha: true }}
             dpr={[1, 2]}
           >
@@ -302,7 +312,7 @@ export default function CheckIn() {
         <div className="checkin-mascot-bottom-badge font-mono">
           <span>{character.emoji} {character.name}</span>
           <span className="badge-sep">·</span>
-          <span>{character.trait}</span>
+          <span>{character.animal}</span>
         </div>
 
       </div>

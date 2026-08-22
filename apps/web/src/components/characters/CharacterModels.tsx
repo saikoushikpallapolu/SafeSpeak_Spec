@@ -40,7 +40,66 @@ export function preloadGLBModel(id: string): Promise<CachedModel | null> {
       loader.load(
         url,
         (gltf) => {
-          const scene = gltf.scene
+          // Remove black stage / pedestal / platform mesh for panda
+          if (id === 'panda') {
+            const toRemove: Object3D[] = []
+            scene.traverse((child) => {
+              const mesh = child as Mesh
+              if (mesh.isMesh) {
+                const nameLower = (mesh.name || '').toLowerCase()
+                const parentNameLower = (mesh.parent?.name || '').toLowerCase()
+                const matNameLower = ((mesh.material as any)?.name || '').toLowerCase()
+                if (
+                  nameLower.includes('stage') ||
+                  nameLower.includes('base') ||
+                  nameLower.includes('pedestal') ||
+                  nameLower.includes('ground') ||
+                  nameLower.includes('platform') ||
+                  nameLower.includes('stand') ||
+                  nameLower.includes('slate') ||
+                  nameLower.includes('floor') ||
+                  nameLower.includes('disc') ||
+                  nameLower.includes('cylinder') ||
+                  parentNameLower.includes('stage') ||
+                  parentNameLower.includes('base') ||
+                  parentNameLower.includes('pedestal') ||
+                  parentNameLower.includes('ground') ||
+                  matNameLower.includes('stage') ||
+                  matNameLower.includes('base') ||
+                  matNameLower.includes('pedestal') ||
+                  matNameLower.includes('ground')
+                ) {
+                  toRemove.push(mesh)
+                }
+              }
+            })
+
+            // If found by name, remove them
+            if (toRemove.length > 0) {
+              toRemove.forEach((m) => {
+                m.visible = false
+                m.parent?.remove(m)
+              })
+            } else {
+              // Otherwise detect flat wide floor slab
+              scene.traverse((child) => {
+                const mesh = child as Mesh
+                if (mesh.isMesh && mesh.geometry) {
+                  mesh.geometry.computeBoundingBox()
+                  const gBox = mesh.geometry.boundingBox
+                  if (gBox) {
+                    const gSize = new Vector3()
+                    gBox.getSize(gSize)
+                    if (gSize.y > 0 && gSize.y < 0.25 && (gSize.x / gSize.y > 3 || gSize.z / gSize.y > 3)) {
+                      mesh.visible = false
+                      mesh.parent?.remove(mesh)
+                    }
+                  }
+                }
+              })
+            }
+          }
+
           // Normalize bounding box & scale once
           const box = new Box3().setFromObject(scene)
           const size = new Vector3()
@@ -224,7 +283,8 @@ export function GLBModel({
     // Breathing & hover bob
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
     group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
+    // Gentle, calm showcase rotation
+    group.current.rotation.y += delta * (selected ? 0.35 : 0.2)
   })
 
   return (
