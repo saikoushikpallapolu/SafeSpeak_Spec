@@ -1,0 +1,12 @@
+{
+  "name": "@safespeak/crisis-keywords",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@safespeak/shared-types": "file:../shared-types"
+  },
+  "devDependencies": {
+    "typescript": "~5.4.0"
+  }
+}

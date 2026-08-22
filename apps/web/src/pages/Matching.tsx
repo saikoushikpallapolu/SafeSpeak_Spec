@@ -5,17 +5,29 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import { getCharacterById } from '../data/characters'
 import { CharacterModelRenderer } from '../components/characters/CharacterModels'
+import { useMatching } from '../hooks/useSafeSpeakSocket'
+import type { CharacterId } from '@safespeak/shared-types'
 import './Matching.css'
 
 export default function Matching() {
   const navigate = useNavigate()
-  const charId = sessionStorage.getItem('character') || 'owl'
+  const charId = (sessionStorage.getItem('character') || 'owl') as CharacterId
   const character = getCharacterById(charId)
 
+  const { joinQueue, leaveQueue } = useMatching(() => {
+    navigate('/match-found')
+  })
+
   useEffect(() => {
-    const timer = setTimeout(() => navigate('/match-found'), 5000)
-    return () => clearTimeout(timer)
-  }, [navigate])
+    const rawAnswers = sessionStorage.getItem('checkin_answers')
+    const checkin = rawAnswers ? JSON.parse(rawAnswers) : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+
+    joinQueue(charId, checkin)
+
+    return () => {
+      leaveQueue()
+    }
+  }, [charId, joinQueue, leaveQueue])
 
   return (
     <div className="matching-page">
@@ -51,7 +63,7 @@ export default function Matching() {
         transition={{ delay: 0.4, duration: 0.5 }}
       >
         <h1 className="matching-copy__title">Looking for someone<br />carrying something similar…</h1>
-        <p className="matching-copy__sub">This only takes a moment.</p>
+        <p className="matching-copy__sub">Connecting with an anonymous peer in real-time.</p>
       </motion.div>
 
       {/* Pulsing dots */}

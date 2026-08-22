@@ -150,6 +150,18 @@ const QUESTIONS: QuestionConfig[] = [
       { id: 'prefer_not_to_say', label: 'Prefer not to say' },
     ],
   },
+  {
+    id: 10,
+    key: 'connect_mode',
+    title: 'How would you like to connect right now?',
+    subtitle: 'Choose between an automatic 1:1 match or exploring live group rooms.',
+    companionTip: 'Both are completely anonymous and one-time. Pick whatever feels right.',
+    type: 'single',
+    options: [
+      { id: 'quick_match', label: '⚡ Quick 1:1 Match', sub: 'Automatic anonymous 1:1 pairing based on check-in answers' },
+      { id: 'themed_rooms', label: '🌐 Themed Group Rooms', sub: 'Join a live group conversation built around a topic' },
+    ],
+  },
 ]
 
 export default function CheckIn() {
@@ -168,6 +180,7 @@ export default function CheckIn() {
     boundaries: [],
     languages: ['English'],
     safety: '',
+    connect_mode: 'quick_match',
   })
 
   const currentQ = QUESTIONS[currentStepIndex]
@@ -198,12 +211,22 @@ export default function CheckIn() {
   // Next Question logic
   const handleNext = () => {
     if (currentQ.id === 9) {
-      sessionStorage.setItem('checkin_answers', JSON.stringify(answers))
       if (answers.safety === 'yes') {
+        sessionStorage.setItem('checkin_answers', JSON.stringify(answers))
         navigate('/safety/crisis')
         return
       }
-      navigate('/matching')
+      setCurrentStepIndex(9) // Go to Connect Mode (Question 10)
+      return
+    }
+
+    if (currentQ.id === 10) {
+      sessionStorage.setItem('checkin_answers', JSON.stringify(answers))
+      if (answers.connect_mode === 'themed_rooms') {
+        navigate('/rooms')
+      } else {
+        navigate('/matching')
+      }
       return
     }
 
@@ -389,7 +412,7 @@ export default function CheckIn() {
                   </div>
                 )}
 
-                {/* 2. Single-Select Card List (Q4, Q5, Q6) */}
+                {/* 2. Single-Select Card List (Q4, Q5, Q6, Q10) */}
                 {currentQ.type === 'single' && currentQ.options && (
                   <div className="checkin-single-column-list">
                     {currentQ.options.map(opt => {
@@ -494,7 +517,7 @@ export default function CheckIn() {
                   whileHover={canProceed() ? { scale: 1.02 } : {}}
                   whileTap={canProceed() ? { scale: 0.98 } : {}}
                 >
-                  <span>{currentQ.id === totalQuestions ? 'Complete Check-In' : 'Next Question'}</span>
+                  <span>{currentQ.id === totalQuestions ? 'Start Session' : currentQ.id === 9 ? 'Continue to Connect' : 'Next Question'}</span>
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <path d="M3.75 9H14.25M10.5 5.25L14.25 9L10.5 12.75" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

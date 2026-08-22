@@ -1,0 +1,42 @@
+/* Quick SOS Button */
+.sos-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.sos-quick-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #FFFFFF;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+.sos-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #E55353;
+  box-shadow: 0 0 8px #E55353;
+  animation: pulseSOS 2s infinite ease-in-out;
+}
+
+@keyframes pulseSOS {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.3);
+  }
+}
