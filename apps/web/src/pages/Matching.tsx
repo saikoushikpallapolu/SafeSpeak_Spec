@@ -9,30 +9,48 @@ import { useMatching } from '../hooks/useSafeSpeakSocket'
 import type { CharacterId } from '@safespeak/shared-types'
 import './Matching.css'
 
+// A global flag that survives React StrictMode double-mount cycles
+// (useRef resets per-instance, but this persists across StrictMode remounts)
+let _globalJoinInProgress = false
+
 export default function Matching() {
   const navigate = useNavigate()
   const charId = (sessionStorage.getItem('character') || 'owl') as CharacterId
   const character = getCharacterById(charId)
-  const hasJoinedRef = useRef(false)
+  const joinCalledRef = useRef(false)
 
   const { joinQueue, leaveQueue, socketConnected } = useMatching((payload) => {
-    console.log('[SafeSpeak Frontend] Match found! Navigating to /match-found with payload:', payload)
+    console.log('[SafeSpeak Frontend] 🎉 Match found! Navigating to /match-found')
+    _globalJoinInProgress = false
     navigate('/match-found')
   })
 
   useEffect(() => {
-    if (!hasJoinedRef.current) {
-      hasJoinedRef.current = true
-      const rawAnswers = sessionStorage.getItem('checkin_answers')
-      const checkin = rawAnswers
-        ? JSON.parse(rawAnswers)
-        : { topics: ['exam'], heaviness: 3, languages: ['English'] }
-      console.log('[SafeSpeak Frontend] Calling joinQueue for:', charId)
-      joinQueue(charId, checkin)
+    // Prevent duplicate calls from React StrictMode or fast re-renders
+    if (joinCalledRef.current || _globalJoinInProgress) {
+      console.log('[SafeSpeak Frontend] joinQueue already in progress — skipping duplicate call')
+      return
     }
-  }, [charId, joinQueue])
+
+    joinCalledRef.current = true
+    _globalJoinInProgress = true
+
+    const rawAnswers = sessionStorage.getItem('checkin_answers')
+    const checkin = rawAnswers
+      ? JSON.parse(rawAnswers)
+      : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+
+    console.log('[SafeSpeak Frontend] Calling joinQueue for:', charId, '| checkin:', checkin)
+    joinQueue(charId, checkin)
+
+    return () => {
+      // Only reset on true unmount (navigating away), not StrictMode remount
+      // We rely on firestoreMatching.ts's cancelAllListeners for cleanup
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps — intentionally only run once
 
   const handleSkipToRooms = () => {
+    _globalJoinInProgress = false
     leaveQueue()
     navigate('/rooms')
   }
@@ -91,7 +109,7 @@ export default function Matching() {
             boxShadow: socketConnected ? '0 0 6px #4ade80' : '0 0 6px #facc15',
             display: 'inline-block'
           }} />
-          {socketConnected ? 'Connected to SafeSpeak Cloud — searching for a peer…' : 'Connecting to SafeSpeak Cloud…'}
+          {socketConnected ? '● Connected to SafeSpeak Cloud — searching for a peer…' : '● Connecting to SafeSpeak Cloud…'}
         </div>
       </motion.div>
 
