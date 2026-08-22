@@ -1,0 +1,60 @@
+/* PWA Install Prompt Banner */
+.install-prompt-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 480px;
+  width: calc(100% - 32px);
+  background: #141414;
+  border: 1px solid var(--color-border-bright);
+  border-radius: var(--radius-xl);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.05);
+  z-index: 100;
+  backdrop-filter: blur(16px);
+}
+
+.install-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.install-prompt-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.install-prompt-title {
+  font-size: 0.95rem;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.install-prompt-sub {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.install-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.install-dismiss-btn {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+}
+
+.install-cta-btn {
+  font-size: 0.75rem;
+  padding: 6px 14px;
+  border-radius: 9999px;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "SafeSpeak — Talk Without Fear",
+  "short_name": "SafeSpeak",
+  "description": "Anonymous, multilingual mental health peer support with real-time translation and two-tier safety guardian.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/leaf.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "social"]
+}

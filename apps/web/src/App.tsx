@@ -19,31 +19,35 @@ import Friends from './pages/Friends'
 import AddFriend from './pages/AddFriend'
 import RoomsBrowse from './pages/RoomsBrowse'
 import GroupRoom from './pages/GroupRoom'
+import InstallPrompt from './components/common/InstallPrompt'
 
 export default function App() {
   const location = useLocation()
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Splash />} />
-        <Route path="/characters" element={<Characters />} />
-        <Route path="/checkin" element={<CheckIn />} />
-        <Route path="/matching" element={<Matching />} />
-        <Route path="/match-found" element={<MatchFound />} />
-        <Route path="/chat/:roomId" element={<Chat />} />
-        <Route path="/chat/:roomId/voice" element={<VoiceState />} />
-        <Route path="/safety/nudge" element={<MildNudge />} />
-        <Route path="/safety/crisis" element={<CrisisOverlay />} />
-        <Route path="/report" element={<Report />} />
-        <Route path="/reflection" element={<Reflection />} />
-        <Route path="/resources" element={<Resources />} />
-        <Route path="/friends" element={<Friends />} />
-        <Route path="/friends/add" element={<AddFriend />} />
-        <Route path="/rooms" element={<RoomsBrowse />} />
-        <Route path="/rooms/:roomId" element={<GroupRoom />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
+    <>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Splash />} />
+          <Route path="/characters" element={<Characters />} />
+          <Route path="/checkin" element={<CheckIn />} />
+          <Route path="/matching" element={<Matching />} />
+          <Route path="/match-found" element={<MatchFound />} />
+          <Route path="/chat/:roomId" element={<Chat />} />
+          <Route path="/chat/:roomId/voice" element={<VoiceState />} />
+          <Route path="/safety/nudge" element={<MildNudge />} />
+          <Route path="/safety/crisis" element={<CrisisOverlay />} />
+          <Route path="/report" element={<Report />} />
+          <Route path="/reflection" element={<Reflection />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/friends" element={<Friends />} />
+          <Route path="/friends/add" element={<AddFriend />} />
+          <Route path="/rooms" element={<RoomsBrowse />} />
+          <Route path="/rooms/:roomId" element={<GroupRoom />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AnimatePresence>
+      <InstallPrompt />
+    </>
   )
 }
