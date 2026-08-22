@@ -1,12 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
-  "buildCommand": "npm run build --workspace=apps/web",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build:web",
   "outputDirectory": "apps/web/dist",
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "VITE_BACKEND_URL": "https://safespeak-backend-mv7h.onrender.com"
+  }
 }
