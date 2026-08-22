@@ -36,6 +36,7 @@ export function preloadGLBModel(id: string): Promise<CachedModel | null> {
         resolve(null)
         return
       }
+      const url = possibleUrls[urlIndex]
       loader.load(
         url,
         (gltf) => {
