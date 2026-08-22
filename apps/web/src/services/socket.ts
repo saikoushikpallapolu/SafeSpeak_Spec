@@ -1,4 +1,4 @@
-// Safe WebSocket client with graceful standalone fallback
+import { io, Socket } from 'socket.io-client'
 
 type EventHandler = (...args: any[]) => void
 
@@ -43,16 +43,29 @@ class MockSocket {
   }
 }
 
-let socketInstance: any = null
+let socketInstance: Socket | MockSocket | null = null
 
-export function getSocket(): any {
+export function getSocket(): Socket | MockSocket {
   if (!socketInstance) {
-    try {
-      // In standalone client prototype, use high-speed in-memory event bus
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:4000' : '')
+
+    if (backendUrl) {
+      try {
+        socketInstance = io(backendUrl, {
+          transports: ['websocket', 'polling'],
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 10,
+          reconnectionDelay: 1000,
+        })
+        console.log('[SafeSpeak Socket] Connected to live backend at:', backendUrl)
+      } catch (err) {
+        console.warn('[SafeSpeak Socket] Live connection failed, using resilient fallback bus:', err)
+        socketInstance = new MockSocket()
+      }
+    } else {
       socketInstance = new MockSocket()
-      console.log('[SafeSpeak Socket] Initialized active message bus:', socketInstance.id)
-    } catch {
-      socketInstance = new MockSocket()
+      console.log('[SafeSpeak Socket] Initialized active standalone event bus:', (socketInstance as any).id)
     }
   }
 

@@ -1,0 +1,14 @@
+run = "npm run dev:server"
+entrypoint = "apps/server/src/server.ts"
+hidden = [".git", "node_modules"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "npm install && npm run build:server && npm run start:server"]
+deploymentTarget = "autoscale"
+
+[[ports]]
+localPort = 4000
+externalPort = 80

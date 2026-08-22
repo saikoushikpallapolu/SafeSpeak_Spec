@@ -10,13 +10,25 @@ dotenv.config()
 const app = express()
 const server = http.createServer(app)
 
-const PORT = process.env.PORT || 4000
+const PORT = Number(process.env.PORT) || 4000
+const HOST = '0.0.0.0'
 
 // Middleware
 app.use(cors({ origin: '*' }))
 app.use(express.json())
 
-// Health check endpoint
+// Root & Health check endpoints
+app.get('/', (req, res) => {
+  res.json({
+    name: 'SafeSpeak Backend Real-Time Engine',
+    status: 'online',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+    },
+  })
+})
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -32,16 +44,19 @@ app.get('/api/health', (req, res) => {
   })
 })
 
-// Setup Socket.IO
+// Setup Socket.IO with cross-origin support
 const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
+    credentials: true,
   },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
 })
 
 setupSocketHandlers(io)
 
-server.listen(PORT, () => {
-  console.log(`[SafeSpeak Server] Running on http://localhost:${PORT}`)
+server.listen(PORT, HOST, () => {
+  console.log(`[SafeSpeak Server] Running on http://${HOST}:${PORT}`)
 })
