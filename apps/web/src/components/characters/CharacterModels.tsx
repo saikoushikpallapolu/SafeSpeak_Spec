@@ -136,6 +136,15 @@ function LoadingAura() {
   )
 }
 
+const MODEL_ROTATION_OFFSETS: Record<string, number> = {
+  penguin: -Math.PI / 2,
+  owl: 0,
+  deer: 0,
+  panda: 0,
+  rabbit: 0,
+  capybara: 0,
+}
+
 /* ════════════════════════════════════════
    DYNAMIC GLB MODEL LOADER (Glitch-Free)
    ════════════════════════════════════════ */
@@ -198,10 +207,11 @@ export function GLBModel({
   useFrame((_, delta) => {
     if (!group.current) return
 
-    // If staticPose is true, completely lock mascot facing front with 0 movement
+    // If staticPose is true, completely lock mascot facing forward directly at user with 0 movement
     if (staticPose) {
       group.current.position.set(0, 0, 0)
-      group.current.rotation.set(0, 0, 0)
+      const baseRotY = MODEL_ROTATION_OFFSETS[id] || 0
+      group.current.rotation.set(0, baseRotY, 0)
       group.current.scale.set(1, 1, 1)
       return
     }
