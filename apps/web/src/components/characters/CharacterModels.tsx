@@ -42,14 +42,19 @@ export function preloadGLBModel(id: string): Promise<CachedModel | null> {
         (gltf) => {
           // Remove black stage / pedestal / platform mesh for panda
           if (id === 'panda') {
-            const toRemove: Object3D[] = []
             scene.traverse((child) => {
               const mesh = child as Mesh
               if (mesh.isMesh) {
                 const nameLower = (mesh.name || '').toLowerCase()
                 const parentNameLower = (mesh.parent?.name || '').toLowerCase()
-                const matNameLower = ((mesh.material as any)?.name || '').toLowerCase()
-                if (
+                const mBox = new Box3().setFromObject(mesh)
+                const mSize = new Vector3()
+                mBox.getSize(mSize)
+                const mCenter = new Vector3()
+                mBox.getCenter(mCenter)
+
+                // Match name or flat wide slab geometry
+                const isNamedStage =
                   nameLower.includes('stage') ||
                   nameLower.includes('base') ||
                   nameLower.includes('pedestal') ||
@@ -63,41 +68,18 @@ export function preloadGLBModel(id: string): Promise<CachedModel | null> {
                   parentNameLower.includes('stage') ||
                   parentNameLower.includes('base') ||
                   parentNameLower.includes('pedestal') ||
-                  parentNameLower.includes('ground') ||
-                  matNameLower.includes('stage') ||
-                  matNameLower.includes('base') ||
-                  matNameLower.includes('pedestal') ||
-                  matNameLower.includes('ground')
-                ) {
-                  toRemove.push(mesh)
+                  parentNameLower.includes('ground')
+
+                const isFlatStageGeometry =
+                  (mSize.x > 1.0 || mSize.z > 1.0) && mSize.y < 0.5 && mCenter.y < 0.2
+
+                if (isNamedStage || isFlatStageGeometry) {
+                  mesh.visible = false
+                  mesh.scale.set(0, 0, 0)
+                  mesh.position.set(0, -9999, 0)
                 }
               }
             })
-
-            // If found by name, remove them
-            if (toRemove.length > 0) {
-              toRemove.forEach((m) => {
-                m.visible = false
-                m.parent?.remove(m)
-              })
-            } else {
-              // Otherwise detect flat wide floor slab
-              scene.traverse((child) => {
-                const mesh = child as Mesh
-                if (mesh.isMesh && mesh.geometry) {
-                  mesh.geometry.computeBoundingBox()
-                  const gBox = mesh.geometry.boundingBox
-                  if (gBox) {
-                    const gSize = new Vector3()
-                    gBox.getSize(gSize)
-                    if (gSize.y > 0 && gSize.y < 0.25 && (gSize.x / gSize.y > 3 || gSize.z / gSize.y > 3)) {
-                      mesh.visible = false
-                      mesh.parent?.remove(mesh)
-                    }
-                  }
-                }
-              })
-            }
           }
 
           // Normalize bounding box & scale once
