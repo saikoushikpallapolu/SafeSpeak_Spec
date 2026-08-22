@@ -163,7 +163,7 @@ export function GLBModel({
     if (GLB_CACHE.has(id)) {
       const cached = GLB_CACHE.get(id)!
       const scene = cached.scene.clone(true)
-      if (cached.animations && cached.animations.length > 0) {
+      if (cached.animations && cached.animations.length > 0 && !staticPose) {
         const mixer = new AnimationMixer(scene)
         const action = mixer.clipAction(cached.animations[0])
         action.setLoop(LoopRepeat, Infinity)
@@ -177,7 +177,7 @@ export function GLBModel({
     preloadGLBModel(id).then((cached) => {
       if (!isMounted || !cached) return
       const scene = cached.scene.clone(true)
-      if (cached.animations && cached.animations.length > 0) {
+      if (cached.animations && cached.animations.length > 0 && !staticPose) {
         const mixer = new AnimationMixer(scene)
         const action = mixer.clipAction(cached.animations[0])
         action.setLoop(LoopRepeat, Infinity)
@@ -193,24 +193,28 @@ export function GLBModel({
         mixerRef.current.stopAllAction()
       }
     }
-  }, [id])
+  }, [id, staticPose])
 
   useFrame((_, delta) => {
+    if (!group.current) return
+
+    // If staticPose is true, completely lock mascot facing front with 0 movement
+    if (staticPose) {
+      group.current.position.set(0, 0, 0)
+      group.current.rotation.set(0, 0, 0)
+      group.current.scale.set(1, 1, 1)
+      return
+    }
+
     if (mixerRef.current) {
       mixerRef.current.update(delta)
     }
-    if (!group.current) return
+
     const t = Date.now() / 1000
     // Breathing & hover bob
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
     group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
-    
-    // Static pose or gentle rotation
-    if (staticPose) {
-      group.current.rotation.y = 0
-    } else {
-      group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
-    }
+    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
   return (
