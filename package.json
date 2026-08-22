@@ -7,11 +7,11 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "npx tsx apps/server/src/server.ts",
+    "start:server": "npx tsx apps/server/src/server.ts",
     "dev": "concurrently \"npm --prefix apps/server run dev\" \"npm --prefix apps/web run dev\"",
-    "dev:server": "npm --prefix apps/server run dev",
+    "dev:server": "npx tsx apps/server/src/server.ts",
     "dev:web": "npm --prefix apps/web run dev",
-    "start": "npm --prefix apps/server start",
-    "start:server": "npm --prefix apps/server start",
     "build:server": "npm --prefix apps/server run build",
     "build:web": "npm --prefix apps/web run build",
     "build": "npm --prefix apps/web run build && npm --prefix apps/server run build",
