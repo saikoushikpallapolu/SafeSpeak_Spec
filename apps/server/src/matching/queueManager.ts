@@ -90,6 +90,10 @@ export class QueueManager {
     }
   }
 
+  public getQueueSize(): number {
+    return this.queue.size
+  }
+
   private triggerSimulatedMatch(socketId: string) {
     const entry = this.queue.get(socketId)
     if (!entry) return

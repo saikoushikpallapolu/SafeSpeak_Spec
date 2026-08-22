@@ -1,7 +1,7 @@
 export const HARMFUL_MEDICAL_ADVICE_PATTERNS = [
   /\b(stop (taking|your) (antidepressants|medication|medicine|prescriptions|pills))\b/i,
   /\b(don'?t (go to|see) a doctor|doctors are lying)\b/i,
-  /\b(drink bleach|drink kerosene|take (10|20|all) pills)\b/i,
+  /\b(drink (bleach|bleaching|kerosene)|take (10|20|all) pills)\b/i,
   /\b(cure depression with|cure cancer with lemon)\b/i,
 ]
 

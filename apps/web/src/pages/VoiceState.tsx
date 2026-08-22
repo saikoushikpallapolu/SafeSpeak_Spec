@@ -11,10 +11,17 @@ export default function VoiceState() {
 
   const { isRecording, transcript, startListening, stopListening, error } = useSpeechVoice()
   const [seconds, setSeconds] = useState(0)
+  const [manualText, setManualText] = useState('')
 
   useEffect(() => {
     startListening('en-IN')
   }, [startListening])
+
+  useEffect(() => {
+    if (transcript) {
+      setManualText(transcript)
+    }
+  }, [transcript])
 
   useEffect(() => {
     let interval: any
@@ -27,11 +34,12 @@ export default function VoiceState() {
   }, [isRecording])
 
   const handleSend = () => {
-    if (transcript && transcript.trim()) {
+    const textToSend = manualText.trim() || transcript.trim()
+    if (textToSend) {
       const socket = getSocket()
       socket.emit('send_message', {
         roomId,
-        text: transcript.trim(),
+        text: textToSend,
         isVoice: true,
       })
     }
@@ -64,18 +72,22 @@ export default function VoiceState() {
         transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
       >
         <h1 className="voice-title font-display">
-          {isRecording ? 'Listening…' : transcript ? 'Ready to send' : 'Tap mic to speak'}
+          {isRecording ? 'Listening…' : manualText ? 'Ready to send' : 'Tap mic to speak'}
         </h1>
         <p className="voice-sub font-body">
           {error ? error : 'Speak naturally in your language. It will be transcribed and translated.'}
         </p>
 
-        {/* Real-time transcribed text preview */}
-        {transcript && (
-          <div className="voice-transcript-card font-body">
-            "{transcript}"
-          </div>
-        )}
+        {/* Real-time transcribed text preview / editable input */}
+        <div className="voice-transcript-container">
+          <textarea
+            className="voice-transcript-card font-body"
+            value={manualText}
+            onChange={(e) => setManualText(e.target.value)}
+            placeholder="Your voice transcription will appear here (or type/edit directly)…"
+            rows={3}
+          />
+        </div>
 
         {/* Waveform visual */}
         <div className={`voice-wave ${isRecording ? 'voice-wave--active' : ''}`} aria-label="Voice waveform">
@@ -117,9 +129,9 @@ export default function VoiceState() {
           <button
             className="btn btn-primary"
             onClick={handleSend}
-            disabled={!transcript.trim()}
+            disabled={!manualText.trim()}
           >
-            Send
+            Send Voice Note
           </button>
         </div>
       </motion.div>
