@@ -19,7 +19,7 @@ export class QueueManager {
   private onMatchFoundCallback?: (result: MatchFoundResult) => void
   private fallbackDelayMs: number
 
-  constructor(onMatchFound?: (result: MatchFoundResult) => void, fallbackDelayMs: number = 15000) {
+  constructor(onMatchFound?: (result: MatchFoundResult) => void, fallbackDelayMs: number = 25000) {
     this.onMatchFoundCallback = onMatchFound
     this.fallbackDelayMs = fallbackDelayMs
   }
@@ -32,7 +32,7 @@ export class QueueManager {
     // Remove existing if any
     this.dequeue(request.socketId)
 
-    // Check if another real user is waiting
+    // Check if another real user is waiting (unconditional matching for ANY 2 people)
     const waitingEntry = this.findBestMatch(request)
 
     if (waitingEntry) {
@@ -51,10 +51,10 @@ export class QueueManager {
         peerSocketId: request.socketId,
         peerCharacter: request.characterId,
         peerTag: request.characterTag || 'Peer',
-        peerLanguage: request.preferredLanguages[0] || 'English',
+        peerLanguage: (request.preferredLanguages && request.preferredLanguages[0]) || 'English',
         myCharacter: waitingEntry.request.characterId,
         myTag: waitingEntry.request.characterTag || 'You',
-        myLanguage: waitingEntry.request.preferredLanguages[0] || 'English',
+        myLanguage: (waitingEntry.request.preferredLanguages && waitingEntry.request.preferredLanguages[0]) || 'English',
         sharedContext,
         icebreaker,
         isSimulatedPeer: false,
@@ -66,10 +66,10 @@ export class QueueManager {
         peerSocketId: waitingEntry.request.socketId,
         peerCharacter: waitingEntry.request.characterId,
         peerTag: waitingEntry.request.characterTag || 'Peer',
-        peerLanguage: waitingEntry.request.preferredLanguages[0] || 'English',
+        peerLanguage: (waitingEntry.request.preferredLanguages && waitingEntry.request.preferredLanguages[0]) || 'English',
         myCharacter: request.characterId,
         myTag: request.characterTag || 'You',
-        myLanguage: request.preferredLanguages[0] || 'English',
+        myLanguage: (request.preferredLanguages && request.preferredLanguages[0]) || 'English',
         sharedContext,
         icebreaker,
         isSimulatedPeer: false,
@@ -99,7 +99,7 @@ export class QueueManager {
       timeoutId,
     })
 
-    console.log(`[SafeSpeak Queue] Socket ${request.socketId} enqueued. Total waiting: ${this.queue.size}`)
+    console.log(`[SafeSpeak Queue] Socket ${request.socketId} enqueued. Total waiting in queue: ${this.queue.size}`)
   }
 
   public dequeue(socketId: string): void {
@@ -107,7 +107,7 @@ export class QueueManager {
     if (entry) {
       clearTimeout(entry.timeoutId)
       this.queue.delete(socketId)
-      console.log(`[SafeSpeak Queue] Socket ${socketId} dequeued. Total waiting: ${this.queue.size}`)
+      console.log(`[SafeSpeak Queue] Socket ${socketId} dequeued. Total waiting in queue: ${this.queue.size}`)
     }
   }
 
@@ -140,16 +140,16 @@ export class QueueManager {
       peerSocketId: `sim_${Date.now()}`,
       peerCharacter: peerChar,
       peerTag,
-      peerLanguage: req.preferredLanguages[0] || 'English',
+      peerLanguage: (req.preferredLanguages && req.preferredLanguages[0]) || 'English',
       myCharacter: req.characterId,
       myTag: req.characterTag || 'You',
-      myLanguage: req.preferredLanguages[0] || 'English',
+      myLanguage: (req.preferredLanguages && req.preferredLanguages[0]) || 'English',
       sharedContext,
       icebreaker,
       isSimulatedPeer: true,
     }
 
-    console.log(`[SafeSpeak Queue] Simulated peer fallback triggered for socket ${socketId}`)
+    console.log(`[SafeSpeak Queue] Solo fallback triggered for socket ${socketId}`)
 
     if (this.onMatchFoundCallback) {
       this.onMatchFoundCallback({
@@ -162,9 +162,10 @@ export class QueueManager {
   private findBestMatch(req: MatchRequest): QueueEntry | null {
     if (this.queue.size === 0) return null
 
-    // Pick first available waiting user
+    // Unconditionally pick the first waiting other user
     const entries = Array.from(this.queue.values())
-    return entries[0] || null
+    const otherEntries = entries.filter(e => e.request.socketId !== req.socketId)
+    return otherEntries[0] || null
   }
 
   private calculateSharedContext(req1: MatchRequest, req2: MatchRequest): string {
@@ -172,16 +173,17 @@ export class QueueManager {
     const t2 = req2.checkin?.topics || []
     const common = t1.filter(x => t2.includes(x))
 
-    if (common.includes('exam')) return 'exam & academic pressure'
-    if (common.includes('family')) return 'family expectations'
-    if (common.includes('body')) return 'body image & self-doubt'
-    if (common.includes('loneliness')) return 'navigating loneliness'
-    if (common.includes('habit')) return 'trying to break a tough habit'
-    if (common.includes('sleep')) return 'trouble sleeping & restless thoughts'
-    if (common.includes('work')) return 'work & career stress'
+    if (common.length > 0) {
+      return this.topicToFriendly(common[0])
+    }
+
+    if (t1.length > 0 && t2.length > 0) {
+      return `${this.topicToFriendly(t1[0])} & ${this.topicToFriendly(t2[0])}`
+    }
 
     if (t1.length > 0) return this.topicToFriendly(t1[0])
-    return 'the weight of a heavy day'
+    if (t2.length > 0) return this.topicToFriendly(t2[0])
+    return 'carrying daily stress & thoughts'
   }
 
   private deriveSoloContext(req: MatchRequest): string {

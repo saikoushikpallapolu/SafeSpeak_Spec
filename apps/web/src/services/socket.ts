@@ -47,12 +47,10 @@ let socketInstance: Socket | MockSocket | null = null
 
 export function getSocket(): Socket | MockSocket {
   if (!socketInstance) {
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    
-    // Default to live Render backend if no custom environment variable is passed
+    // Default to the live Render production backend for ALL devices and testing environments
     const backendUrl = 
       import.meta.env.VITE_BACKEND_URL || 
-      (isLocal ? 'http://localhost:4000' : 'https://safespeak-backend-mv7h.onrender.com')
+      'https://safespeak-backend-mv7h.onrender.com'
 
     if (backendUrl) {
       try {
@@ -60,7 +58,7 @@ export function getSocket(): Socket | MockSocket {
           transports: ['websocket', 'polling'],
           autoConnect: true,
           reconnection: true,
-          reconnectionAttempts: 10,
+          reconnectionAttempts: 20,
           reconnectionDelay: 1000,
         })
         console.log('[SafeSpeak Socket] Connected to live backend at:', backendUrl)

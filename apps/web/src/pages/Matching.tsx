@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
@@ -13,21 +13,27 @@ export default function Matching() {
   const navigate = useNavigate()
   const charId = (sessionStorage.getItem('character') || 'owl') as CharacterId
   const character = getCharacterById(charId)
+  const hasJoinedRef = useRef(false)
 
-  const { joinQueue, leaveQueue } = useMatching(() => {
+  const { joinQueue, leaveQueue } = useMatching((payload) => {
+    console.log('[SafeSpeak Frontend] Match found! Navigating to /match-found with payload:', payload)
     navigate('/match-found')
   })
 
   useEffect(() => {
-    const rawAnswers = sessionStorage.getItem('checkin_answers')
-    const checkin = rawAnswers ? JSON.parse(rawAnswers) : { topics: ['exam'], heaviness: 3, languages: ['English'] }
-
-    joinQueue(charId, checkin)
-
-    return () => {
-      leaveQueue()
+    if (!hasJoinedRef.current) {
+      hasJoinedRef.current = true
+      const rawAnswers = sessionStorage.getItem('checkin_answers')
+      const checkin = rawAnswers ? JSON.parse(rawAnswers) : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+      console.log('[SafeSpeak Frontend] Joining matching queue for:', charId)
+      joinQueue(charId, checkin)
     }
-  }, [charId, joinQueue, leaveQueue])
+  }, [charId, joinQueue])
+
+  const handleSkipToRooms = () => {
+    leaveQueue()
+    navigate('/rooms')
+  }
 
   return (
     <div className="matching-page">
@@ -76,7 +82,7 @@ export default function Matching() {
       {/* Skip to rooms */}
       <motion.button
         className="btn btn-ghost matching-skip"
-        onClick={() => navigate('/rooms')}
+        onClick={handleSkipToRooms}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2 }}
