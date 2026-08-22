@@ -1,14 +1,13 @@
 modules = ["nodejs-20"]
-run = "npx tsx apps/server/src/server.ts"
-entrypoint = "apps/server/src/server.ts"
+run = "npm start"
+entrypoint = "server.js"
 hidden = [".git", "node_modules"]
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-build = ["sh", "-c", "npm install"]
-run = ["sh", "-c", "npx tsx apps/server/src/server.ts"]
+run = ["npm", "start"]
 deploymentTarget = "autoscale"
 
 [[ports]]

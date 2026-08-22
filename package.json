@@ -2,12 +2,14 @@
   "name": "safespeak-workspace",
   "private": true,
   "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "start": "npx tsx apps/server/src/server.ts",
+    "start": "node server.js",
     "start:server": "npx tsx apps/server/src/server.ts",
     "dev": "concurrently \"npm --prefix apps/server run dev\" \"npm --prefix apps/web run dev\"",
     "dev:server": "npx tsx apps/server/src/server.ts",
