@@ -1,0 +1,99 @@
+.voice-page {
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-deep);
+  position: relative;
+  overflow: hidden;
+}
+
+.voice-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(123,174,127,0.12) 0%, transparent 70%);
+  animation: pulse-burst 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.voice-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  text-align: center;
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  max-width: 400px;
+}
+
+.voice-title {
+  font-size: var(--text-3xl);
+  color: var(--color-text-primary);
+}
+
+.voice-sub {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-family: var(--font-display);
+  margin-top: calc(-1 * var(--space-4));
+}
+
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 80px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.voice-wave__bar {
+  flex: 1;
+  background: linear-gradient(to top, var(--color-accent-sage), var(--color-accent-gold));
+  border-radius: var(--radius-full);
+  min-height: 8%;
+  animation: wave-bar 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes wave-bar {
+  from { transform: scaleY(0.4); opacity: 0.5; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+.voice-timer {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  color: var(--color-accent-sage);
+  letter-spacing: 0.1em;
+}
+
+.voice-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.voice-mic-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--color-accent-rose);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 0 rgba(196,123,123,0.4);
+  animation: mic-pulse 1.5s ease-in-out infinite;
+  transition: background var(--dur-base);
+}
+
+@keyframes mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(196,123,123,0.4); }
+  70% { box-shadow: 0 0 0 16px rgba(196,123,123,0); }
+  100% { box-shadow: 0 0 0 0 rgba(196,123,123,0); }
+}

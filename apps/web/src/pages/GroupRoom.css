@@ -1,0 +1,15 @@
+.grouproom-page { height: 100dvh; display: flex; flex-direction: column; background: var(--color-bg-deep); }
+.grouproom-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border-dim); background: rgba(26,36,25,0.95); backdrop-filter: blur(12px); flex-shrink: 0; }
+.grouproom-header__center { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.grouproom-header__name { font-family: var(--font-display); font-size: var(--text-base); color: var(--color-text-primary); font-weight: 400; }
+.grouproom-header__avatars { display: flex; gap: 2px; }
+.grouproom-avatar { font-size: 0.9rem; }
+.grouproom-messages { flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.grouproom-msg { display: flex; gap: var(--space-3); align-items: flex-start; }
+.grouproom-msg__avatar { font-size: 1.25rem; flex-shrink: 0; margin-top: 2px; }
+.grouproom-msg__content { flex: 1; min-width: 0; }
+.grouproom-msg__tag { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-accent-sage); display: block; margin-bottom: var(--space-1); }
+.grouproom-msg__text { background: var(--color-bg-card); border: 1px solid var(--color-border-dim); border-radius: var(--radius-lg); border-top-left-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); font-size: var(--text-base); color: var(--color-text-primary); line-height: 1.5; }
+.grouproom-msg__time { font-size: var(--text-xs); color: var(--color-text-dim); font-family: var(--font-mono); flex-shrink: 0; margin-top: var(--space-1); }
+.grouproom-input-bar { display: flex; gap: var(--space-2); padding: var(--space-3) var(--space-4) max(var(--space-5), env(safe-area-inset-bottom)); border-top: 1px solid var(--color-border-dim); background: rgba(26,36,25,0.95); backdrop-filter: blur(12px); flex-shrink: 0; }
+.grouproom-input { border-radius: var(--radius-full); }

@@ -1,0 +1,139 @@
+.crisis-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  position: relative;
+  background: #0D1510;
+}
+
+.crisis-bg {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(123,174,127,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.crisis-card {
+  position: relative;
+  z-index: 5;
+  background: var(--color-bg-mid);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8) var(--space-6);
+  max-width: 480px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  box-shadow: var(--shadow-lg), 0 0 80px rgba(123,174,127,0.08);
+}
+
+/* Header */
+.crisis-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.crisis-header__icon {
+  font-size: 2.5rem;
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.crisis-header__title {
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.crisis-header__sub {
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+/* Helplines */
+.crisis-helplines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.crisis-helpline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-dim);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  transition: border-color var(--dur-base);
+}
+
+.crisis-helpline:hover {
+  border-color: var(--color-border);
+}
+
+.crisis-helpline__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.crisis-helpline__name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.crisis-helpline__name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+}
+
+.crisis-helpline__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+  font-family: var(--font-mono);
+}
+
+.crisis-call-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--call-color) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--call-color) 30%, transparent);
+  color: var(--call-color);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  transition: all var(--dur-base) var(--ease-calm);
+  flex-shrink: 0;
+}
+
+.crisis-call-btn:hover {
+  background: color-mix(in srgb, var(--call-color) 20%, transparent);
+  transform: translateY(-1px);
+}
+
+.crisis-safe-btn {
+  width: 100%;
+  color: var(--color-text-dim);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-align: center;
+  justify-content: center;
+}

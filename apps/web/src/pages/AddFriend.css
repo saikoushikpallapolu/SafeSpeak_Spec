@@ -1,0 +1,10 @@
+.addfriend-page { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: var(--space-5); }
+.addfriend-backdrop { position: fixed; inset: 0; background: rgba(10,15,10,0.8); backdrop-filter: blur(8px); }
+.addfriend-modal { position: relative; z-index: 61; background: var(--color-bg-mid); border: 1px solid var(--color-border); border-radius: var(--radius-2xl); padding: var(--space-8) var(--space-6); max-width: 380px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); text-align: center; box-shadow: var(--shadow-lg); }
+.addfriend-avatar { font-size: 3rem; animation: float 3s ease-in-out infinite; }
+.addfriend-title { font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary); font-weight: 400; }
+.addfriend-from { color: var(--color-text-muted); font-family: var(--font-mono); font-size: var(--text-sm); }
+.addfriend-from strong { color: var(--color-accent-gold); }
+.addfriend-note { font-size: var(--text-sm); color: var(--color-text-dim); line-height: 1.6; }
+.addfriend-actions { display: flex; gap: var(--space-3); width: 100%; }
+.addfriend-actions .btn { flex: 1; justify-content: center; }
