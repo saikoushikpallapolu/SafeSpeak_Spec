@@ -63,12 +63,22 @@ q.setOnMatchFound(({ user1Payload }) => {
 })
 
 const req1: MatchRequest = {
+  socketId: 'sock_123',
+  sessionId: 'sess_123',
   characterId: 'owl',
   characterTag: 'StressedOwl#1234',
-  topics: ['exam', 'stress'],
-  heaviness: 3,
+  checkin: {
+    topics: ['exam'],
+    heaviness: 3,
+    duration: 'today',
+    intent: 'vent',
+    peer_stage: 'currently_in_it',
+    role: 'talker',
+    languages: ['English'],
+    safety: 'no',
+    boundaries: [],
+  },
   preferredLanguages: ['English'],
-  boundaries: [],
 }
 
 q.enqueue(req1)
