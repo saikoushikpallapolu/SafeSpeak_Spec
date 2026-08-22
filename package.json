@@ -3,8 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "npm --prefix apps/web run dev",
+    "install": "npm --prefix apps/web install",
     "build": "npm --prefix apps/web run build",
+    "dev": "npm --prefix apps/web run dev",
     "preview": "npm --prefix apps/web run preview"
   }
 }
