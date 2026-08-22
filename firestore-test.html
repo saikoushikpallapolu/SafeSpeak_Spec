@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SafeSpeak Firestore Match Test</title>
+  <style>
+    body { background: #1a1a2e; color: #e0e0e0; font-family: monospace; padding: 20px; }
+    button { padding: 10px 20px; margin: 5px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    .join { background: #4ade80; color: #000; }
+    .leave { background: #f87171; color: #fff; }
+    .clear { background: #fbbf24; color: #000; }
+    #log { background: #0d0d1a; padding: 15px; border-radius: 8px; margin-top: 15px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; }
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    .info { color: #60a5fa; }
+    .warn { color: #fbbf24; }
+    h1 { color: #c084fc; }
+    #status { font-size: 18px; padding: 10px; margin: 10px 0; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 SafeSpeak Firestore Match Test</h1>
+  <p>Open this page on TWO devices/tabs. Click "Join Queue" on both. They should match.</p>
+  <div id="status" style="background: #1e1e3f;">⏳ Not connected</div>
+  <div>
+    <button class="join" onclick="joinQueue()">🔍 Join Queue</button>
+    <button class="leave" onclick="leaveQueue()">🚪 Leave Queue</button>
+    <button class="clear" onclick="clearAllDocs()">🧹 Clear ALL Queue Docs</button>
+  </div>
+  <div id="log"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, deleteDoc, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const app = initializeApp({
+      apiKey: "AIzaSyCoQ8wEUNlkiPvGCsBtp_Ph-X_zQBtSmco",
+      authDomain: "safespeak-ea004.firebaseapp.com",
+      projectId: "safespeak-ea004",
+      storageBucket: "safespeak-ea004.firebasestorage.app",
+      messagingSenderId: "1008587300754",
+      appId: "1:1008587300754:web:37ef003cc5371b741f2b4b",
+    });
+    const db = getFirestore(app);
+
+    const userId = 'test_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5);
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+
+    function log(msg, cls = '') {
+      const time = new Date().toLocaleTimeString();
+      logEl.innerHTML = `<span class="${cls}">[${time}] ${msg}</span>\n` + logEl.innerHTML;
+    }
+
+    log(`Your userId: ${userId}`, 'info');
+    statusEl.textContent = `✅ Firebase initialized. Your ID: ${userId}`;
+    statusEl.style.background = '#1a3a1a';
+
+    let unsubMyDoc = null;
+    let unsubQueue = null;
+    let matched = false;
+
+    window.joinQueue = async function() {
+      matched = false;
+      log('Joining queue...', 'info');
+
+      const myDocRef = doc(db, 'matching_queue', userId);
+
+      // Write my doc
+      try {
+        await setDoc(myDocRef, {
+          userId,
+          characterId: 'owl',
+          characterTag: `Owl#${Math.floor(1000 + Math.random() * 9000)}`,
+          checkin: { topics: ['exam'], heaviness: 3, languages: ['English'] },
+          languages: ['English'],
+          status: 'waiting',
+          createdAt: Date.now(),
+          matchedPayload: null,
+        });
+        log('✅ Written to matching_queue as "waiting"', 'success');
+      } catch (e) {
+        log(`❌ ERROR writing to queue: ${e.message}`, 'error');
+        return;
+      }
+
+      // Listen to my own doc for incoming match
+      unsubMyDoc = onSnapshot(myDocRef, (snap) => {
+        if (!snap.exists() || matched) return;
+        const data = snap.data();
+        log(`📄 My doc changed: status=${data.status}`, 'info');
+        if (data.status === 'matched' && data.matchedPayload) {
+          matched = true;
+          log(`🎉🎉🎉 MATCHED BY PEER! Room: ${data.matchedPayload.roomId}`, 'success');
+          statusEl.textContent = `🎉 MATCHED! Room: ${data.matchedPayload.roomId}`;
+          statusEl.style.background = '#1a4a1a';
+          alert(`MATCHED! Room: ${data.matchedPayload.roomId}`);
+          if (unsubMyDoc) unsubMyDoc();
+          if (unsubQueue) unsubQueue();
+          deleteDoc(myDocRef).catch(() => {});
+        }
+      });
+
+      // Watch ALL waiting docs
+      const q = query(collection(db, 'matching_queue'), where('status', '==', 'waiting'));
+      unsubQueue = onSnapshot(q, async (snapshot) => {
+        if (matched) return;
+        const now = Date.now();
+        const allDocs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        log(`👀 Queue snapshot: ${allDocs.length} total docs: [${allDocs.map(d => d.id).join(', ')}]`, 'info');
+
+        const peers = snapshot.docs.filter(d => {
+          if (d.id === userId) return false;
+          const data = d.data();
+          const age = now - (typeof data.createdAt === 'number' ? data.createdAt : 0);
+          if (age > 60000) {
+            log(`⚠️ Skipping stale peer ${d.id} (age: ${Math.round(age/1000)}s)`, 'warn');
+            return false;
+          }
+          return true;
+        });
+
+        if (peers.length > 0) {
+          const peer = peers[0];
+          const peerData = peer.data();
+          log(`🔥 Found fresh peer: ${peer.id} (age: ${Math.round((now - peerData.createdAt)/1000)}s)`, 'success');
+
+          // Tie-breaker: smaller userId creates the room
+          if (userId < peer.id) {
+            log(`⚡ I win tie-break (${userId} < ${peer.id}). Creating room...`, 'success');
+            const roomId = `room_test_${Date.now()}`;
+
+            try {
+              await updateDoc(doc(db, 'matching_queue', peer.id), {
+                status: 'matched',
+                matchedPayload: { roomId, peerTag: `TestOwl`, isSimulatedPeer: false },
+              });
+              matched = true;
+              log(`🎉🎉🎉 ROOM CREATED & PEER NOTIFIED! Room: ${roomId}`, 'success');
+              statusEl.textContent = `🎉 MATCHED! Room: ${roomId}`;
+              statusEl.style.background = '#1a4a1a';
+              alert(`MATCHED! Room: ${roomId}`);
+              if (unsubMyDoc) unsubMyDoc();
+              if (unsubQueue) unsubQueue();
+              deleteDoc(myDocRef).catch(() => {});
+            } catch (e) {
+              log(`❌ Error updating peer: ${e.message}`, 'error');
+            }
+          } else {
+            log(`⏳ Peer ${peer.id} wins tie-break. Waiting for them to create room...`, 'warn');
+          }
+        }
+      });
+    };
+
+    window.leaveQueue = async function() {
+      matched = true;
+      if (unsubMyDoc) { unsubMyDoc(); unsubMyDoc = null; }
+      if (unsubQueue) { unsubQueue(); unsubQueue = null; }
+      try {
+        await deleteDoc(doc(db, 'matching_queue', userId));
+        log('🚪 Left queue', 'info');
+      } catch (e) {
+        log(`Error leaving: ${e.message}`, 'error');
+      }
+    };
+
+    window.clearAllDocs = async function() {
+      log('🧹 Clearing ALL docs from matching_queue...', 'warn');
+      try {
+        const snap = await getDocs(collection(db, 'matching_queue'));
+        let count = 0;
+        for (const d of snap.docs) {
+          await deleteDoc(d.ref);
+          count++;
+        }
+        log(`🧹 Deleted ${count} docs from matching_queue`, 'success');
+      } catch (e) {
+        log(`Error clearing: ${e.message}`, 'error');
+      }
+    };
+  </script>
+</body>
+</html>

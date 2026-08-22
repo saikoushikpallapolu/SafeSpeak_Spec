@@ -1,44 +1,50 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import { getCharacterById } from '../data/characters'
 import { CharacterModelRenderer } from '../components/characters/CharacterModels'
-import { useMatching } from '../hooks/useSafeSpeakSocket'
-import type { CharacterId } from '@safespeak/shared-types'
+import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
+import { joinFirestoreQueue, leaveFirestoreQueue } from '../services/firestoreMatching'
 import './Matching.css'
 
 export default function Matching() {
   const navigate = useNavigate()
   const charId = (sessionStorage.getItem('character') || 'owl') as CharacterId
   const character = getCharacterById(charId)
-  const isJoinedRef = useRef(false)
-
-  const { joinQueue, leaveQueue, socketConnected } = useMatching((payload) => {
-    console.log('[SafeSpeak Frontend] 🎉 Match found! Navigating to /match-found:', payload)
-    navigate('/match-found')
-  })
+  const [status, setStatus] = useState('Connecting to SafeSpeak Cloud…')
 
   useEffect(() => {
-    if (!isJoinedRef.current) {
-      isJoinedRef.current = true
-      const rawAnswers = sessionStorage.getItem('checkin_answers')
-      const checkin = rawAnswers
-        ? JSON.parse(rawAnswers)
-        : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+    let cancelled = false
 
-      console.log('[SafeSpeak Frontend] Enqueuing character:', charId)
-      joinQueue(charId, checkin)
-    }
+    const rawAnswers = sessionStorage.getItem('checkin_answers')
+    const checkin = rawAnswers
+      ? JSON.parse(rawAnswers)
+      : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+
+    setStatus('Connected — searching for a peer…')
+
+    joinFirestoreQueue(charId, checkin, (payload: MatchFoundPayload) => {
+      if (cancelled) return
+      console.log('[SafeSpeak] Match found!', payload)
+      navigate('/match-found')
+    })
 
     return () => {
-      leaveQueue()
+      cancelled = true
+      // Do NOT call leaveFirestoreQueue() here!
+      // React StrictMode will unmount+remount, and calling leave here
+      // would delete the queue doc before the remount can re-join.
+      // The queue doc is cleaned up by:
+      // 1. firestoreMatching.ts on match (deleteDoc in completeMatch)
+      // 2. handleSkipToRooms below
+      // 3. Stale doc purge on next join
     }
-  }, [charId, joinQueue, leaveQueue])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSkipToRooms = () => {
-    leaveQueue()
+    leaveFirestoreQueue()
     navigate('/rooms')
   }
 
@@ -78,25 +84,24 @@ export default function Matching() {
         <h1 className="matching-copy__title">Looking for someone<br />carrying something similar…</h1>
         <p className="matching-copy__sub">Connecting with an anonymous peer in real-time.</p>
 
-        {/* Live connection status badge */}
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '6px',
           marginTop: '12px',
           fontSize: '12px',
-          color: socketConnected ? '#4ade80' : '#facc15',
+          color: '#4ade80',
           background: 'rgba(255,255,255,0.07)',
           borderRadius: '20px',
           padding: '4px 12px',
         }}>
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: socketConnected ? '#4ade80' : '#facc15',
-            boxShadow: socketConnected ? '0 0 6px #4ade80' : '0 0 6px #facc15',
+            background: '#4ade80',
+            boxShadow: '0 0 6px #4ade80',
             display: 'inline-block'
           }} />
-          {socketConnected ? '● Connected to SafeSpeak Cloud — searching for a peer…' : '● Connecting to SafeSpeak Cloud…'}
+          {status}
         </div>
       </motion.div>
 
