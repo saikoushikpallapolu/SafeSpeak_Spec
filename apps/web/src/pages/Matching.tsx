@@ -91,7 +91,7 @@ export default function Matching() {
             boxShadow: socketConnected ? '0 0 6px #4ade80' : '0 0 6px #facc15',
             display: 'inline-block'
           }} />
-          {socketConnected ? 'Connected to server — searching for a peer…' : 'Connecting to server…'}
+          {socketConnected ? 'Connected to SafeSpeak Cloud — searching for a peer…' : 'Connecting to SafeSpeak Cloud…'}
         </div>
       </motion.div>
 

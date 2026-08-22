@@ -12,14 +12,17 @@
   "dependencies": {
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
+    "@safespeak/crisis-keywords": "file:../../packages/crisis-keywords",
     "@safespeak/shared-types": "file:../../packages/shared-types",
     "@types/three": "^0.185.4",
+    "firebase": "^12.18.0",
     "framer-motion": "^13.1.1",
     "gsap": "^3.15.0",
     "lucide-react": "^1.33.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^6.30.6",
+    "safespeak-workspace": "file:../..",
     "socket.io-client": "^4.7.5",
     "three": "^0.165.0"
   },

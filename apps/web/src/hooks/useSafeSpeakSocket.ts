@@ -1,78 +1,67 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getSocket, whenConnected } from '../services/socket'
-import type { CharacterId, ChatMessage, CheckInAnswers, MatchFoundPayload, ReflectionSummary, ThemedRoomId } from '@safespeak/shared-types'
+import type { 
+  CharacterId, 
+  ChatMessage, 
+  CheckInAnswers, 
+  MatchFoundPayload, 
+  ReflectionSummary, 
+  ThemedRoomId 
+} from '@safespeak/shared-types'
+import { 
+  joinFirestoreQueue, 
+  leaveFirestoreQueue, 
+  getOrCreateUserId 
+} from '../services/firestoreMatching'
+import { 
+  subscribeToChatRoom, 
+  sendChatMessage, 
+  setChatTyping, 
+  leaveChatRoom, 
+  endChatRoom,
+  subscribeToGroupRoom,
+  sendGroupRoomMessage
+} from '../services/firestoreChat'
 
-// Hook for 1:1 Matching Queue
+// Hook for 1:1 Matching Queue (Powered by Cloud Firestore)
 export function useMatching(onMatchFound?: (payload: MatchFoundPayload) => void) {
   const [isSearching, setIsSearching] = useState(false)
   const [matchData, setMatchData] = useState<MatchFoundPayload | null>(null)
-  const [socketConnected, setSocketConnected] = useState(false)
-  const socket = getSocket()
   const onMatchFoundRef = useRef(onMatchFound)
 
   useEffect(() => {
     onMatchFoundRef.current = onMatchFound
   }, [onMatchFound])
 
-  // Track connection status
-  useEffect(() => {
-    if ((socket as any).connected) setSocketConnected(true)
-    const onConnect = () => { console.log('[SafeSpeak Frontend] ✅ Socket connected!'); setSocketConnected(true) }
-    const onDisconnect = () => { console.warn('[SafeSpeak Frontend] Socket disconnected'); setSocketConnected(false) }
-    socket.on('connect', onConnect)
-    socket.on('disconnect', onDisconnect)
-    return () => {
-      socket.off('connect', onConnect)
-      socket.off('disconnect', onDisconnect)
-    }
-  }, [socket])
-
-  useEffect(() => {
-    const handleMatchFound = (payload: MatchFoundPayload) => {
-      console.log('[SafeSpeak Frontend] 🎉 Received match_found payload:', payload)
-      setIsSearching(false)
-      setMatchData(payload)
-      sessionStorage.setItem('current_match', JSON.stringify(payload))
-      if (onMatchFoundRef.current) {
-        onMatchFoundRef.current(payload)
-      }
-    }
-
-    socket.on('match_found', handleMatchFound)
-
-    return () => {
-      socket.off('match_found', handleMatchFound)
-    }
-  }, [socket])
-
   const joinQueue = useCallback((characterId: CharacterId, checkin: CheckInAnswers) => {
     setIsSearching(true)
     sessionStorage.removeItem('current_match')
-    const charTag = `${characterId.charAt(0).toUpperCase() + characterId.slice(1)}#${Math.floor(1000 + Math.random() * 9000)}`
-    const payload = {
-      characterId,
-      characterTag: charTag,
-      checkin,
-      preferredLanguages: checkin.languages || ['English'],
-    }
-    console.log('[SafeSpeak Frontend] Waiting for socket connection before join_queue...')
-    // Use whenConnected to guarantee the emit only fires after the backend ACKs the connection
-    whenConnected((s) => {
-      console.log('[SafeSpeak Frontend] ✅ Socket ready — emitting join_queue for:', characterId, 'socket id:', (s as any).id)
-      s.emit('join_queue', payload)
+
+    console.log('[SafeSpeak Firebase] Enqueuing user for 1:1 match...')
+    joinFirestoreQueue(characterId, checkin, (payload) => {
+      console.log('[SafeSpeak Firebase] Match event received:', payload)
+      setIsSearching(false)
+      setMatchData(payload)
+      if (onMatchFoundRef.current) {
+        onMatchFoundRef.current(payload)
+      }
     })
   }, [])
 
   const leaveQueue = useCallback(() => {
     setIsSearching(false)
-    getSocket().emit('leave_queue')
+    leaveFirestoreQueue()
   }, [])
 
-  return { isSearching, matchData, socketConnected, joinQueue, leaveQueue }
+  return { isSearching, matchData, socketConnected: true, joinQueue, leaveQueue }
 }
 
-// Hook for Live 1:1 Chat
-export function useChat(roomId: string, myCharacterId: CharacterId, myTag: string, language: string = 'English') {
+// Hook for Live 1:1 Chat (Powered by Cloud Firestore)
+export function useChat(
+  roomId: string, 
+  myCharacterId: CharacterId, 
+  myTag: string, 
+  language: string = 'English'
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isPeerTyping, setIsPeerTyping] = useState(false)
   const [crisisAlert, setCrisisAlert] = useState<{ tier: number; reason: string } | null>(null)
@@ -80,96 +69,88 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
   const [moderationBlocked, setModerationBlocked] = useState<{ reason: string; category?: string } | null>(null)
   const [peerLeft, setPeerLeft] = useState<{ hasLeft: boolean; reason?: string } | null>(null)
   const [reflectionSummary, setReflectionSummary] = useState<ReflectionSummary | null>(null)
-  const socket = getSocket()
+  const startTimeRef = useRef<number>(Date.now())
+
+  const myUserId = getOrCreateUserId()
+  const currentMatchRaw = sessionStorage.getItem('current_match')
+  const currentMatch: MatchFoundPayload | null = currentMatchRaw ? JSON.parse(currentMatchRaw) : null
+  const peerLanguage = currentMatch?.peerLanguage || 'English'
+  const peerTag = currentMatch?.peerTag || 'Peer'
 
   useEffect(() => {
-    socket.emit('join_chat_room', {
-      roomId,
-      character: myCharacterId,
-      tag: myTag,
-      language,
+    startTimeRef.current = Date.now()
+
+    const unsubscribe = subscribeToChatRoom(roomId, myUserId, {
+      onMessages: (msgs) => {
+        setMessages(msgs)
+      },
+      onTyping: (isTyping) => {
+        setIsPeerTyping(isTyping)
+      },
+      onPeerLeft: (reason) => {
+        setPeerLeft({ hasLeft: true, reason })
+      },
+      onChatEnded: (summary) => {
+        setReflectionSummary(summary)
+        sessionStorage.setItem('reflection_summary', JSON.stringify(summary))
+      },
     })
-
-    const handleNewMessage = (msg: ChatMessage) => {
-      setMessages((prev) => {
-        // Prevent duplicates
-        if (prev.some((m) => m.id === msg.id)) return prev
-        return [...prev, msg]
-      })
-    }
-
-    const handlePeerTyping = ({ isTyping }: { isTyping: boolean }) => {
-      setIsPeerTyping(isTyping)
-    }
-
-    const handleCrisisAlert = (data: { tier: number; reason: string }) => {
-      setCrisisAlert(data)
-    }
-
-    const handleNudgeAlert = (data: { tier: number; triggerWord: string }) => {
-      setNudgeAlert(data)
-    }
-
-    const handleModerationBlocked = (data: { reason: string; category?: string }) => {
-      setModerationBlocked(data)
-    }
-
-    const handlePeerLeft = (data: { reason?: string }) => {
-      setPeerLeft({
-        hasLeft: true,
-        reason: data.reason || 'Your conversation partner has left the chat.',
-      })
-    }
-
-    const handleChatEnded = ({ summary }: { summary: ReflectionSummary }) => {
-      setReflectionSummary(summary)
-      sessionStorage.setItem('reflection_summary', JSON.stringify(summary))
-    }
-
-    socket.on('new_message', handleNewMessage)
-    socket.on('peer_typing', handlePeerTyping)
-    socket.on('crisis_alert', handleCrisisAlert)
-    socket.on('nudge_alert', handleNudgeAlert)
-    socket.on('moderation_blocked', handleModerationBlocked)
-    socket.on('peer_left', handlePeerLeft)
-    socket.on('chat_ended', handleChatEnded)
 
     return () => {
-      socket.off('new_message', handleNewMessage)
-      socket.off('peer_typing', handlePeerTyping)
-      socket.off('crisis_alert', handleCrisisAlert)
-      socket.off('nudge_alert', handleNudgeAlert)
-      socket.off('moderation_blocked', handleModerationBlocked)
-      socket.off('peer_left', handlePeerLeft)
-      socket.off('chat_ended', handleChatEnded)
+      unsubscribe()
     }
-  }, [socket, roomId, myCharacterId, myTag, language])
+  }, [roomId, myUserId])
 
-  const sendMessage = useCallback((text: string, isVoice: boolean = false) => {
+  const sendMessage = useCallback(async (text: string, isVoice: boolean = false) => {
     if (!text.trim()) return
-    socket.emit('send_message', {
+
+    const result = await sendChatMessage(
       roomId,
-      text: text.trim(),
+      myUserId,
+      myCharacterId,
+      myTag,
+      language,
+      text,
       isVoice,
-    })
-  }, [socket, roomId])
+      peerLanguage
+    )
+
+    if (result.crisisTier === 2) {
+      setCrisisAlert({ tier: 2, reason: result.error || 'Crisis alert' })
+    } else if (result.crisisTier === 1) {
+      setNudgeAlert({ tier: 1, triggerWord: text })
+    }
+
+    if (result.moderationBlocked) {
+      setModerationBlocked(result.moderationBlocked)
+    }
+  }, [roomId, myUserId, myCharacterId, myTag, language, peerLanguage])
 
   const sendTypingStart = useCallback(() => {
-    socket.emit('typing_start', { roomId })
-  }, [socket, roomId])
+    setChatTyping(roomId, myUserId, true)
+  }, [roomId, myUserId])
 
   const sendTypingStop = useCallback(() => {
-    socket.emit('typing_stop', { roomId })
-  }, [socket, roomId])
+    setChatTyping(roomId, myUserId, false)
+  }, [roomId, myUserId])
 
-  const leaveChat = useCallback(() => {
-    socket.emit('leave_chat', { roomId })
+  const leaveChat = useCallback(async () => {
+    await leaveChatRoom(roomId, myUserId)
     sessionStorage.removeItem('current_match')
-  }, [socket, roomId])
+  }, [roomId, myUserId])
 
-  const endChat = useCallback(() => {
-    socket.emit('end_chat', { roomId })
-  }, [socket, roomId])
+  const endChat = useCallback(async () => {
+    const summary = await endChatRoom(
+      roomId,
+      myUserId,
+      myCharacterId,
+      peerTag,
+      messages,
+      startTimeRef.current
+    )
+    setReflectionSummary(summary)
+    sessionStorage.setItem('reflection_summary', JSON.stringify(summary))
+  }, [roomId, myUserId, myCharacterId, peerTag, messages])
 
   const dismissNudge = useCallback(() => {
     setNudgeAlert(null)
@@ -199,54 +180,53 @@ export function useChat(roomId: string, myCharacterId: CharacterId, myTag: strin
   }
 }
 
-// Hook for Themed Group Rooms
-export function useGroupRoom(roomId: ThemedRoomId, myCharacterId: CharacterId, myTag: string, language: string = 'English') {
+// Hook for Themed Group Rooms (Powered by Cloud Firestore)
+export function useGroupRoom(
+  roomId: ThemedRoomId, 
+  myCharacterId: CharacterId, 
+  myTag: string, 
+  language: string = 'English'
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [participantCount, setParticipantCount] = useState(5)
+  const [participantCount, setParticipantCount] = useState(6)
   const [crisisAlert, setCrisisAlert] = useState<{ tier: number; reason: string } | null>(null)
-  const socket = getSocket()
+  const myUserId = getOrCreateUserId()
 
   useEffect(() => {
-    socket.emit('join_group_room', {
-      roomId,
-      character: myCharacterId,
-      tag: myTag,
-      language,
+    const unsubscribe = subscribeToGroupRoom(roomId, (msgs) => {
+      setMessages(msgs)
+      setParticipantCount(Math.max(4, Math.min(18, msgs.length + 4)))
     })
-
-    const handleNewMessage = (msg: ChatMessage) => {
-      setMessages((prev) => [...prev, msg])
-    }
-
-    const handleRoomCount = ({ count }: { count: number }) => {
-      setParticipantCount(count)
-    }
-
-    const handleCrisisAlert = (data: { tier: number; reason: string }) => {
-      setCrisisAlert(data)
-    }
-
-    socket.on('new_message', handleNewMessage)
-    socket.on('group_room_count', handleRoomCount)
-    socket.on('crisis_alert', handleCrisisAlert)
 
     return () => {
-      socket.emit('leave_group_room', { roomId })
-      socket.off('new_message', handleNewMessage)
-      socket.off('group_room_count', handleRoomCount)
-      socket.off('crisis_alert', handleCrisisAlert)
+      unsubscribe()
     }
-  }, [socket, roomId, myCharacterId, myTag, language])
+  }, [roomId])
 
-  const sendGroupMessage = useCallback((text: string) => {
+  const sendGroupMessage = useCallback(async (text: string) => {
     if (!text.trim()) return
-    socket.emit('send_message', {
-      roomId,
-      text: text.trim(),
-    })
-  }, [socket, roomId])
 
-  return { messages, participantCount, activeCount: participantCount, crisisAlert, sendGroupMessage }
+    const result = await sendGroupRoomMessage(
+      roomId,
+      myUserId,
+      myCharacterId,
+      myTag,
+      language,
+      text
+    )
+
+    if (result.crisisTier === 2) {
+      setCrisisAlert({ tier: 2, reason: result.error || 'Crisis alert' })
+    }
+  }, [roomId, myUserId, myCharacterId, myTag, language])
+
+  return {
+    messages,
+    participantCount,
+    activeCount: participantCount,
+    crisisAlert,
+    sendGroupMessage,
+  }
 }
 
 // Hook for Web Speech API (STT & TTS)
