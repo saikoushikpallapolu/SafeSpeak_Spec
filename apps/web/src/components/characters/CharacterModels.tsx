@@ -36,51 +36,10 @@ export function preloadGLBModel(id: string): Promise<CachedModel | null> {
         resolve(null)
         return
       }
-      const url = possibleUrls[urlIndex]
       loader.load(
         url,
         (gltf) => {
-          // Remove black stage / pedestal / platform mesh for panda
-          if (id === 'panda') {
-            scene.traverse((child) => {
-              const mesh = child as Mesh
-              if (mesh.isMesh) {
-                const nameLower = (mesh.name || '').toLowerCase()
-                const parentNameLower = (mesh.parent?.name || '').toLowerCase()
-                const mBox = new Box3().setFromObject(mesh)
-                const mSize = new Vector3()
-                mBox.getSize(mSize)
-                const mCenter = new Vector3()
-                mBox.getCenter(mCenter)
-
-                // Match name or flat wide slab geometry
-                const isNamedStage =
-                  nameLower.includes('stage') ||
-                  nameLower.includes('base') ||
-                  nameLower.includes('pedestal') ||
-                  nameLower.includes('ground') ||
-                  nameLower.includes('platform') ||
-                  nameLower.includes('stand') ||
-                  nameLower.includes('slate') ||
-                  nameLower.includes('floor') ||
-                  nameLower.includes('disc') ||
-                  nameLower.includes('cylinder') ||
-                  parentNameLower.includes('stage') ||
-                  parentNameLower.includes('base') ||
-                  parentNameLower.includes('pedestal') ||
-                  parentNameLower.includes('ground')
-
-                const isFlatStageGeometry =
-                  (mSize.x > 1.0 || mSize.z > 1.0) && mSize.y < 0.5 && mCenter.y < 0.2
-
-                if (isNamedStage || isFlatStageGeometry) {
-                  mesh.visible = false
-                  mesh.scale.set(0, 0, 0)
-                  mesh.position.set(0, -9999, 0)
-                }
-              }
-            })
-          }
+          const scene = gltf.scene
 
           // Normalize bounding box & scale once
           const box = new Box3().setFromObject(scene)
