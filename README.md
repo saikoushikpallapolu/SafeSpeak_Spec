@@ -1,61 +1,87 @@
-# SafeSpeak
+# SafeSpeak — Talk Without Fear
 
-> Anonymous, multilingual peer-support chat — speak in your language, be heard in theirs.
-
----
-
-## Quick Orientation
-
-| Directory | What lives here |
-|---|---|
-| `apps/web/` | Next.js frontend — all 17 screens, components, hooks |
-| `apps/server/` | Node.js + Socket.io backend — real-time rooms, Gemini pipeline, safety logic |
-| `packages/shared-types/` | TypeScript types shared between frontend and backend |
-| `packages/crisis-keywords/` | Multi-language keyword lists for Layer-1 crisis detection (no API call) |
-| `packages/ui-kit/` | Design tokens + reusable React components |
-| `scripts/` | Dev/ops utilities — crisis test suite, helpline verifier |
-| `docs/` | Product concept + build plan docs |
-
-See **`docs/REPO_STRUCTURE.md`** (or the artifact panel) for the full breakdown — module file trees, socket event map, DB schema, and the debug checklist.
+> **Anonymous, multilingual mental health peer support with real-time bidirectional translation, two-tier crisis safety guardian, and strictly zero data retention.**
 
 ---
 
-## Getting Started
+## 🌟 Core Features
 
+- 🌐 **Real-time Bidirectional Translation**: Chat seamlessly across **English, Hindi (हिंदी), Telugu (తెలుగు), Tamil (தமிழ்)**, and casual **Hinglish/Tenglish/Tanglish** with original vs. translated toggling.
+- 🛡️ **Two-Tier Safety Guardian**:
+  - **Tier 1 (Stress & Overwhelm)**: Gentle in-chat **Mild Nudge** grounding card with interactive 4-3-4 breathing guidance (*Inhale 4s $\rightarrow$ Hold 3s $\rightarrow$ Exhale 4s*).
+  - **Tier 2 (Self-harm / Crisis Risk)**: Immediate full-screen **Crisis Helpline Overlay** with verified 24×7 emergency helplines (KIRAN `1800-599-0019`, Tele-MANAS `14416`, Vandrevala `1860-266-2345`) and message broadcast suppression.
+  - **Moderation Filter**: Automated blocking of bullying, harassment, and dangerous medical misinformation/unverified home remedies.
+- ⚡ **Intelligent Matching & Solo Fallback**: In-memory matching queue based on check-in topics, heaviness level, and language preference with instant solo companion fallback for single-user testing.
+- 💬 **Themed Group Rooms**: Live rooms by topic (*Exam Stress*, *New to a City*, *3am Thoughts*, *Work Pressure*) with real-time active user counts and private crisis isolation.
+- 🎙️ **Voice Notes (Web Speech API)**: Speech-to-text voice input with live audio waveform and text-to-speech (🔊) reading of translated messages.
+- 🍃 **"Feeling Weather" & Sensory Grounding**: Visual emotional mood gauge (🌧️, ⛅, 🌪️, ☀️) and interactive 5-4-3-2-1 sensory grounding guide.
+- 🔒 **Zero Data Retention**: Strictly one-time anonymous sessions. No accounts, profiles, emails, phone numbers, or persistent chat logs. Exiting wipes memory cleanly.
+
+---
+
+## 🏗️ Repository Architecture
+
+```
+SafeSpeak_Spec/
+├── apps/
+│   ├── server/               # Express + Socket.IO Real-time Engine
+│   │   ├── src/
+│   │   │   ├── ai/           # Translator, Peer Simulator & Reflection
+│   │   │   ├── matching/     # In-memory Queue & Fallback
+│   │   │   ├── safety/       # Crisis Detector & Moderation
+│   │   │   ├── socket/       # Chat & Group Handlers
+│   │   │   └── tests/        # Automated Safety & Translation Test Suite
+│   └── web/                  # Vite + React 18 + Three.js + Framer Motion
+│       ├── public/           # PWA Manifest & Service Worker
+│       └── src/
+│           ├── components/   # 3D Mascots, Feeling Weather, SOS & Install Prompt
+│           ├── data/         # Companion Personas & Biographies
+│           ├── hooks/        # Reactive Socket & Web Speech Hooks
+│           ├── pages/        # All 15+ Screens & Safety Flows
+│           └── services/     # Socket.IO Client Singleton
+└── packages/
+    ├── shared-types/         # Domain TypeScript Interfaces
+    └── crisis-keywords/      # Multilingual Crisis & Moderation Regex Matchers
+```
+
+---
+
+## 🚀 Getting Started
+
+### 1. Install Dependencies
 ```bash
-# Install all workspaces
 npm install
+```
 
-# Start frontend (http://localhost:3000)
-cd apps/web && npm run dev
+### 2. Run Automated Safety & Translation Tests
+```bash
+npm --prefix apps/server test
+```
 
-# Start backend (ws://localhost:3001)
-cd apps/server && npm run dev
+### 3. Start Backend Server (`http://localhost:4000`)
+```bash
+npm --prefix apps/server run dev
+```
 
-# Run the crisis-detection test set (MUST pass before any merge)
-cd apps/server && npm test
+### 4. Start Web Application (`http://localhost:5173`)
+```bash
+npm --prefix apps/web run dev
 ```
 
 ---
 
-## Environment Variables
-
-Copy `.env.example` in each app and fill in:
-
+## 🧪 Verified Health Endpoint
+- Health Check: `GET http://localhost:4000/api/health`
+```json
+{
+  "status": "ok",
+  "service": "SafeSpeak Backend",
+  "features": {
+    "crisisDetection": "active",
+    "multilingualTranslation": "active",
+    "matchingQueue": "active",
+    "peerSimulator": "active",
+    "groupRooms": "active"
+  }
+}
 ```
-GEMINI_API_KEY_1=...
-GEMINI_API_KEY_2=...
-SUPABASE_URL=...
-SUPABASE_SERVICE_ROLE_KEY=...
-NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
-```
-
----
-
-## Build Phases
-
-| Phase | Goal | Key modules |
-|---|---|---|
-| **1 — MVP** | Anonymous 1:1 chat + translation + crisis detection | `server/ai`, `server/safety`, `crisis-keywords` |
-| **2 — Differentiators** | Check-in, matching moment, Anonymous Friends, group rooms | `web/matching`, `web/friends`, `server/friends.handler` |
-| **3 — Stretch** | Voice I/O, topic-based matching, SOS button | `web/hooks/useVoice`, `server/rooms.handler` |
