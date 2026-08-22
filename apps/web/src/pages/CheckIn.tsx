@@ -249,7 +249,7 @@ export default function CheckIn() {
         {/* Full-Height 3D Canvas */}
         <div className="checkin-canvas-viewport">
           <Canvas
-            camera={{ position: [0, -0.2, 2.7], fov: 42 }}
+            camera={{ position: [0, -0.42, 3.8], fov: 38 }}
             gl={{ antialias: true, alpha: true }}
             dpr={[1, 2]}
           >
@@ -259,7 +259,7 @@ export default function CheckIn() {
             <pointLight position={[0, 2, 2]} intensity={2.0} color="#FFFFFF" />
             <hemisphereLight args={['#FFFFFF', '#262626', 1.2]} />
             <Suspense fallback={null}>
-              <CharacterModelRenderer id={character.id} hovered selected />
+              <CharacterModelRenderer id={character.id} hovered selected staticPose={true} />
             </Suspense>
           </Canvas>
         </div>

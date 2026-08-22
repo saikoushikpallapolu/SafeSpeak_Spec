@@ -127,14 +127,14 @@
 /* Comic Speech Tail pointing directly down towards the 3D Mascot */
 .checkin-balloon-tail {
   position: absolute;
-  bottom: -12px;
-  left: 64px;
+  bottom: -11px;
+  left: 50%;
   width: 22px;
   height: 22px;
   background: rgba(14, 14, 14, 0.94);
   border-right: 1.5px solid rgba(255, 255, 255, 0.24);
   border-bottom: 1.5px solid rgba(255, 255, 255, 0.24);
-  transform: rotate(45deg);
+  transform: translateX(-50%) rotate(45deg);
 }
 
 /* Mascot Name Badge Bottom Left */

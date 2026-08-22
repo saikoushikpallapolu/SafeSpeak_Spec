@@ -143,10 +143,12 @@ export function GLBModel({
   id,
   hovered = false,
   selected = false,
+  staticPose = false,
 }: {
   id: string
   hovered?: boolean
   selected?: boolean
+  staticPose?: boolean
 }) {
   const group = useRef<Group>(null)
   const [modelScene, setModelScene] = useState<Object3D | null>(() => {
@@ -202,8 +204,13 @@ export function GLBModel({
     // Breathing & hover bob
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
     group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
-    // Gentle rotation
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
+    
+    // Static pose or gentle rotation
+    if (staticPose) {
+      group.current.rotation.y = 0
+    } else {
+      group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
+    }
   })
 
   return (
@@ -555,10 +562,12 @@ export function CharacterModelRenderer({
   id,
   hovered = false,
   selected = false,
+  staticPose = false,
 }: {
   id: string
   hovered?: boolean
   selected?: boolean
+  staticPose?: boolean
 }) {
   return (
     <GLBModel
@@ -566,6 +575,7 @@ export function CharacterModelRenderer({
       id={id}
       hovered={hovered}
       selected={selected}
+      staticPose={staticPose}
     />
   )
 }
