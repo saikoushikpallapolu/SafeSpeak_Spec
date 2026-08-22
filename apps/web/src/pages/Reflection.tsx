@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { getCharacterById, CHARACTERS } from '../data/characters'
+import { soundFx } from '../services/soundFx'
 import type { CharacterId, ReflectionSummary } from '@safespeak/shared-types'
 import './Reflection.css'
 
@@ -25,6 +26,11 @@ export default function Reflection() {
   const topicsText = summary?.topicsDiscussed?.join(', ') || 'exam pressure, carrying daily stress'
   const takeawaysText = summary?.helpfulTakeaways?.join(', ') || 'being heard, sharing strategies'
   const durationText = summary?.durationMinutes ? `about ${summary.durationMinutes} minute${summary.durationMinutes > 1 ? 's' : ''}` : 'about 5 minutes'
+
+  const handleReaction = (label: string) => {
+    setSelectedReaction(label)
+    soundFx.playReactionSparkle()
+  }
 
   const handleStartFresh = () => {
     // Strictly one-time: wipe all session state
@@ -82,7 +88,7 @@ export default function Reflection() {
             <motion.button
               key={r.label}
               className={`reaction-btn ${selectedReaction === r.label ? 'reaction-btn--active' : ''}`}
-              onClick={() => setSelectedReaction(r.label)}
+              onClick={() => handleReaction(r.label)}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               aria-label={r.label}

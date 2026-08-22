@@ -3,9 +3,18 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCharacterById, CHARACTERS } from '../data/characters'
 import { useChat, useSpeechVoice } from '../hooks/useSafeSpeakSocket'
+import { soundFx } from '../services/soundFx'
 import SOSButton from '../components/common/SOSButton'
 import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
 import './Chat.css'
+
+const AVAILABLE_LANGS = [
+  { id: 'English', label: 'English' },
+  { id: 'Hindi', label: 'हिंदी (Hindi)' },
+  { id: 'Telugu', label: 'తెలుగు (Telugu)' },
+  { id: 'Tamil', label: 'தமிழ் (Tamil)' },
+  { id: 'Hinglish', label: 'Hinglish' },
+]
 
 export default function Chat() {
   const { roomId = 'default_room' } = useParams()
@@ -21,8 +30,11 @@ export default function Chat() {
   const other = getCharacterById(otherId) || CHARACTERS[1]
 
   const myTag = matchData?.myTag || `${me.name}#${Math.floor(1000 + Math.random() * 9000)}`
-  const myLang = matchData?.myLanguage || 'English'
+  const initialLang = matchData?.myLanguage || 'English'
 
+  const [activeLang, setActiveLang] = useState(initialLang)
+  const [showLangDropdown, setShowLangDropdown] = useState(false)
+  const [isMuted, setIsMuted] = useState(soundFx.isMuted())
   const [input, setInput] = useState('')
   const [showOriginalMap, setShowOriginalMap] = useState<Record<string, boolean>>({})
   const [inAppNudge, setInAppNudge] = useState(false)
@@ -42,12 +54,18 @@ export default function Chat() {
     sendTypingStop,
     endChat,
     dismissNudge,
-  } = useChat(roomId, myId, myTag, myLang)
+  } = useChat(roomId, myId, myTag, activeLang)
 
-  // Scroll to bottom on new message
+  // Scroll to bottom on new message & play chime for peer
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isPeerTyping])
+    if (messages.length > 0) {
+      const last = messages[messages.length - 1]
+      if (last.senderCharacter !== myId && !last.senderId.startsWith('me')) {
+        soundFx.playMessageReceived()
+      }
+    }
+  }, [messages, isPeerTyping, myId])
 
   // Handle Crisis Alert (Tier 2) -> Instant emergency overlay
   useEffect(() => {
@@ -60,6 +78,7 @@ export default function Chat() {
   useEffect(() => {
     if (nudgeAlert && nudgeAlert.tier === 1) {
       setInAppNudge(true)
+      soundFx.playBreathIn()
     }
   }, [nudgeAlert])
 
@@ -73,6 +92,7 @@ export default function Chat() {
   const handleSend = () => {
     if (!input.trim()) return
     sendMessage(input.trim())
+    soundFx.playMessageSent()
     setInput('')
     sendTypingStop()
   }
@@ -84,6 +104,11 @@ export default function Chat() {
     } else {
       sendTypingStop()
     }
+  }
+
+  const toggleMute = () => {
+    const muted = soundFx.toggleMute()
+    setIsMuted(muted)
   }
 
   const handleEndChat = () => {
@@ -109,8 +134,41 @@ export default function Chat() {
             <span className="chat-header__you">You</span>
           </div>
 
-          <div className="chat-header__lang-badge font-mono">
-            <span>LIVE · TRANSLATING</span>
+          {/* Quick Language Switcher Dropdown */}
+          <div className="chat-header-lang-container">
+            <button
+              className="chat-header__lang-badge font-mono"
+              onClick={() => setShowLangDropdown(!showLangDropdown)}
+              title="Click to change your target language"
+            >
+              <span>🌐 {activeLang}</span>
+              <span style={{ fontSize: '0.6rem', marginLeft: 4 }}>▼</span>
+            </button>
+
+            <AnimatePresence>
+              {showLangDropdown && (
+                <motion.div
+                  className="chat-lang-dropdown"
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {AVAILABLE_LANGS.map((lang) => (
+                    <button
+                      key={lang.id}
+                      className={`chat-lang-opt ${activeLang === lang.id ? 'chat-lang-opt--active' : ''}`}
+                      onClick={() => {
+                        setActiveLang(lang.id)
+                        setShowLangDropdown(false)
+                      }}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="chat-header__char">
@@ -122,13 +180,25 @@ export default function Chat() {
         </div>
 
         <div className="chat-header__actions">
+          {/* Sound Mute Toggle */}
+          <button
+            className="btn btn-ghost chat-header__btn"
+            onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+            title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+          >
+            {isMuted ? '🔇' : '🔔'}
+          </button>
+
           <SOSButton />
+          
           <button className="btn btn-ghost chat-header__btn" onClick={() => navigate('/resources')} aria-label="Help resources" title="Helplines & Privacy">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.5" />
               <path d="M9 12V9M9 6.5V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
+          
           <button className="btn btn-ghost chat-header__btn" onClick={handleEndChat} aria-label="End chat" title="End Conversation">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3 9l12 0M11 5l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -181,12 +251,12 @@ export default function Chat() {
                 <div className={`chat-bubble ${isMe ? 'chat-bubble--me' : 'chat-bubble--other'}`}>
                   <span>{displayText}</span>
 
-                  {/* Audio playback icon for other's messages */}
+                  {/* Audio playback and flag icons */}
                   {!isMe && (
                     <div className="chat-bubble-actions">
                       <button
                         className="chat-bubble-tts-btn"
-                        onClick={() => speakText(displayText, myLang)}
+                        onClick={() => speakText(displayText, activeLang)}
                         title="Read aloud"
                         aria-label="Read message aloud"
                       >
@@ -281,7 +351,7 @@ export default function Chat() {
             value={input}
             onChange={handleInputChange}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Type in your language (English, Hindi, Telugu, Tamil, Hinglish)…"
+            placeholder={`Type in any language (translated to ${activeLang})…`}
             aria-label="Message input"
           />
           <button

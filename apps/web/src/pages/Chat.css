@@ -58,14 +58,67 @@
   color: var(--color-text-secondary);
 }
 
+.chat-header-lang-container {
+  position: relative;
+}
+
 .chat-header__lang-badge {
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  padding: 2px 8px;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: #FFFFFF;
+  border: 1px solid var(--color-border-bright);
+  padding: 4px 10px;
   border-radius: 9999px;
-  background: #111111;
+  background: #181818;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.chat-header__lang-badge:hover {
+  background: #242424;
+  border-color: #FFFFFF;
+}
+
+.chat-lang-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #161616;
+  border: 1px solid var(--color-border-bright);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  z-index: 50;
+}
+
+.chat-lang-opt {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-lang-opt:hover {
+  background: #222222;
+  color: #FFFFFF;
+}
+
+.chat-lang-opt--active {
+  background: #2D2D2D;
+  color: #FFFFFF;
+  font-weight: 500;
 }
 
 .chat-header__actions {
@@ -83,6 +136,7 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
+  font-size: 0.95rem;
 }
 
 .chat-header__btn:hover {
