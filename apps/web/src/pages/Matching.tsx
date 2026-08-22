@@ -9,48 +9,35 @@ import { useMatching } from '../hooks/useSafeSpeakSocket'
 import type { CharacterId } from '@safespeak/shared-types'
 import './Matching.css'
 
-// A global flag that survives React StrictMode double-mount cycles
-// (useRef resets per-instance, but this persists across StrictMode remounts)
-let _globalJoinInProgress = false
-
 export default function Matching() {
   const navigate = useNavigate()
   const charId = (sessionStorage.getItem('character') || 'owl') as CharacterId
   const character = getCharacterById(charId)
-  const joinCalledRef = useRef(false)
+  const isJoinedRef = useRef(false)
 
   const { joinQueue, leaveQueue, socketConnected } = useMatching((payload) => {
-    console.log('[SafeSpeak Frontend] 🎉 Match found! Navigating to /match-found')
-    _globalJoinInProgress = false
+    console.log('[SafeSpeak Frontend] 🎉 Match found! Navigating to /match-found:', payload)
     navigate('/match-found')
   })
 
   useEffect(() => {
-    // Prevent duplicate calls from React StrictMode or fast re-renders
-    if (joinCalledRef.current || _globalJoinInProgress) {
-      console.log('[SafeSpeak Frontend] joinQueue already in progress — skipping duplicate call')
-      return
+    if (!isJoinedRef.current) {
+      isJoinedRef.current = true
+      const rawAnswers = sessionStorage.getItem('checkin_answers')
+      const checkin = rawAnswers
+        ? JSON.parse(rawAnswers)
+        : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+
+      console.log('[SafeSpeak Frontend] Enqueuing character:', charId)
+      joinQueue(charId, checkin)
     }
-
-    joinCalledRef.current = true
-    _globalJoinInProgress = true
-
-    const rawAnswers = sessionStorage.getItem('checkin_answers')
-    const checkin = rawAnswers
-      ? JSON.parse(rawAnswers)
-      : { topics: ['exam'], heaviness: 3, languages: ['English'] }
-
-    console.log('[SafeSpeak Frontend] Calling joinQueue for:', charId, '| checkin:', checkin)
-    joinQueue(charId, checkin)
 
     return () => {
-      // Only reset on true unmount (navigating away), not StrictMode remount
-      // We rely on firestoreMatching.ts's cancelAllListeners for cleanup
+      leaveQueue()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps — intentionally only run once
+  }, [charId, joinQueue, leaveQueue])
 
   const handleSkipToRooms = () => {
-    _globalJoinInProgress = false
     leaveQueue()
     navigate('/rooms')
   }
