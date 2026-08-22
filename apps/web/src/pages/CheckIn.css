@@ -1,28 +1,29 @@
 /* ============================================================
-   SafeSpeak — Split 9-Question Check-In (Black & White Theme)
+   SafeSpeak — Immersive Full-Height Mascot Thought Cloud Check-In
+   Black & White Monochromatic Theme
    ============================================================ */
 
-.checkin-split-page {
+.checkin-immersive-page {
   min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-deep);
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-/* Header */
-.checkin-split-header {
+/* Mobile & Top Header Status Bar */
+.checkin-top-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 30;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(16px);
+  z-index: 40;
+  flex-shrink: 0;
 }
 
 .checkin-back-btn {
@@ -78,154 +79,232 @@
   opacity: 0.4;
 }
 
-/* Split Layout */
-.checkin-split-layout {
+/* 50/50 Stage Layout */
+.checkin-stage-container {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  padding: var(--space-6);
-  gap: var(--space-6);
-}
-
-@media (min-width: 900px) {
-  .checkin-split-layout {
-    grid-template-columns: 380px 1fr;
-    gap: var(--space-8);
-    align-items: start;
-    padding: var(--space-8) var(--space-6);
-  }
-}
-
-/* LEFT COLUMN — Companion Avatar */
-.checkin-companion-col {
   display: flex;
   flex-direction: column;
-}
-
-@media (min-width: 900px) {
-  .checkin-companion-col {
-    position: sticky;
-    top: 90px;
-  }
-}
-
-.checkin-companion-card {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  box-shadow: var(--shadow-md);
-}
-
-.checkin-avatar-canvas {
-  height: 220px;
-  width: 100%;
-  background: radial-gradient(circle at 50% 50%, #171717 0%, #0A0A0A 80%);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  height: calc(100dvh - 54px);
   overflow: hidden;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
 }
 
-@media (min-width: 900px) {
-  .checkin-avatar-canvas {
-    height: 300px;
+@media (min-width: 960px) {
+  .checkin-stage-container {
+    flex-direction: row;
   }
 }
 
-.checkin-companion-dialogue {
-  background: #171717;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  position: relative;
-}
-
-.checkin-companion-dialogue::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 28px;
-  width: 10px;
-  height: 10px;
-  background: #171717;
-  border-left: 1px solid var(--color-border);
-  border-top: 1px solid var(--color-border);
-  transform: rotate(45deg);
-}
-
-.checkin-dialogue-tag {
-  font-size: var(--text-xs);
-  color: var(--color-text-dim);
-  letter-spacing: 0.06em;
-}
-
-.checkin-dialogue-text {
-  font-size: var(--text-sm);
-  color: #FFFFFF;
-  line-height: 1.5;
-  font-style: italic;
-}
-
-/* RIGHT COLUMN — Form Card */
-.checkin-form-col {
+/* ============================================================
+   LEFT STAGE: Full-Height Mascot with Thought Cloud
+   ============================================================ */
+.checkin-companion-stage {
   flex: 1;
-  min-width: 0;
-}
-
-.checkin-q-card {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-6) var(--space-6) var(--space-8);
+  position: relative;
+  background: radial-gradient(circle at 50% 60%, #161616 0%, #080808 80%);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  box-shadow: var(--shadow-lg);
+  justify-content: space-between;
+  padding: var(--space-6);
+  min-height: 280px;
+  overflow: hidden;
 }
 
-@media (min-width: 768px) {
-  .checkin-q-card {
+@media (min-width: 960px) {
+  .checkin-companion-stage {
+    flex: 0 0 48%;
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+    min-height: auto;
     padding: var(--space-8);
   }
 }
 
-.checkin-q-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+/* 3D Canvas filling whole left pane */
+.checkin-mascot-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: auto;
 }
 
-.checkin-q-badge {
+/* Thought Cloud */
+.checkin-thought-cloud-wrapper {
+  position: relative;
+  z-index: 10;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.checkin-thought-cloud {
+  background: rgba(18, 18, 18, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 28px;
+  padding: var(--space-6) var(--space-7);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.05);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.checkin-thought-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checkin-thought-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.thought-icon {
+  font-size: 14px;
+}
+
+.checkin-thought-step {
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+}
+
+.checkin-thought-question {
+  font-size: clamp(1.4rem, 2.6vw, 2.0rem);
+  color: #FFFFFF;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.checkin-thought-whisper {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Cloud Tail Bubbles */
+.thought-tail-circle {
+  position: absolute;
+  background: rgba(18, 18, 18, 0.92);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.thought-tail-1 {
+  width: 22px;
+  height: 22px;
+  bottom: -18px;
+  left: 48px;
+}
+
+.thought-tail-2 {
+  width: 14px;
+  height: 14px;
+  bottom: -32px;
+  left: 36px;
+}
+
+.thought-tail-3 {
+  width: 8px;
+  height: 8px;
+  bottom: -44px;
+  left: 28px;
+}
+
+/* Mascot Footer Name Pill */
+.checkin-mascot-footer {
+  position: relative;
+  z-index: 10;
+  align-self: flex-start;
+}
+
+.checkin-mascot-pill {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+}
+
+/* ============================================================
+   RIGHT STAGE: Interactive Options & Form Pane
+   ============================================================ */
+.checkin-interactive-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 960px) {
+  .checkin-interactive-stage {
+    flex: 0 0 52%;
+  }
+}
+
+.checkin-interactive-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 960px) {
+  .checkin-interactive-scrollable {
+    padding: var(--space-8) var(--space-8);
+  }
+}
+
+.checkin-options-panel {
+  max-width: 620px;
+  width: 100%;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Guide box */
+.checkin-guide-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkin-guide-tag {
   font-size: var(--text-xs);
   color: var(--color-text-dim);
   letter-spacing: 0.1em;
 }
 
-.checkin-q-title {
-  font-size: clamp(1.6rem, 3.8vw, 2.2rem);
-  color: #FFFFFF;
-  line-height: 1.25;
-  font-weight: 400;
-}
-
-.checkin-q-subtitle {
+.checkin-guide-subtitle {
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
-/* Body / Controls */
-.checkin-q-body {
+/* Dynamic Controls */
+.checkin-dynamic-controls {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -249,9 +328,9 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
-  background: #141414;
+  background: #111111;
   color: var(--color-text-secondary);
   cursor: pointer;
   text-align: left;
@@ -262,7 +341,7 @@
 
 .checkin-opt-btn:hover {
   border-color: #666666;
-  background: #1E1E1E;
+  background: #1A1A1A;
   color: #FFFFFF;
   transform: translateY(-1px);
 }
@@ -278,7 +357,7 @@
 .checkin-opt-check {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: 5px;
   border: 1.5px solid var(--color-border-bright);
   display: flex;
   align-items: center;
@@ -310,7 +389,7 @@
   padding: var(--space-5);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
-  background: #141414;
+  background: #111111;
   color: var(--color-text-secondary);
   cursor: pointer;
   text-align: left;
@@ -319,7 +398,7 @@
 
 .checkin-single-card:hover {
   border-color: #666666;
-  background: #1E1E1E;
+  background: #1A1A1A;
   color: #FFFFFF;
   transform: translateY(-2px);
 }
@@ -378,12 +457,6 @@
 }
 
 /* 3. Discrete Step Slider (Q2: Duration) */
-.checkin-discrete-slider-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 .checkin-discrete-cards {
   display: grid;
   grid-template-columns: 1fr;
@@ -398,9 +471,9 @@
 
 .checkin-discrete-btn {
   padding: var(--space-4);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
-  background: #141414;
+  background: #111111;
   color: var(--color-text-secondary);
   cursor: pointer;
   text-align: center;
@@ -410,7 +483,7 @@
 
 .checkin-discrete-btn:hover {
   border-color: #666666;
-  background: #1E1E1E;
+  background: #1A1A1A;
   color: #FFFFFF;
 }
 
@@ -424,9 +497,9 @@
 
 /* 4. Numeric Heaviness Slider (Q3) */
 .checkin-heaviness-widget {
-  background: #141414;
+  background: #111111;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   padding: var(--space-8) var(--space-6);
   display: flex;
   flex-direction: column;
@@ -483,7 +556,7 @@
   text-align: center;
   font-size: var(--text-base);
   color: #FFFFFF;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-5);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
@@ -501,7 +574,7 @@
   padding: var(--space-5);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
-  background: #141414;
+  background: #111111;
   color: #FFFFFF;
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -513,7 +586,7 @@
 
 .checkin-safety-card:hover {
   border-color: #666666;
-  background: #1E1E1E;
+  background: #1A1A1A;
 }
 
 .checkin-safety-card--selected {
@@ -524,18 +597,16 @@
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
 }
 
-.checkin-safety-card--yes {
-  border-color: #404040;
-}
-
-/* Bottom Actions */
-.checkin-actions-bar {
+/* Bottom Controls */
+.checkin-bottom-controls {
   display: flex;
   justify-content: flex-end;
-  margin-top: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.checkin-next-btn {
+.checkin-continue-btn {
   padding: var(--space-4) var(--space-8);
   font-size: var(--text-base);
   font-weight: 600;
@@ -545,8 +616,8 @@
 }
 
 @media (min-width: 600px) {
-  .checkin-next-btn {
+  .checkin-continue-btn {
     width: auto;
-    min-width: 220px;
+    min-width: 240px;
   }
 }

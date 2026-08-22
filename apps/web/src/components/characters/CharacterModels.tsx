@@ -3,60 +3,45 @@ import { useFrame } from '@react-three/fiber'
 import { Mesh, Group, MeshStandardMaterial, Color, Box3, Vector3, Object3D, AnimationMixer, LoopRepeat } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-/* ── Shared Material factory for procedural fallbacks ── */
-function monoMaterial(colorHex: string, roughness = 0.4, metalness = 0.1) {
-  return new MeshStandardMaterial({
-    color: new Color(colorHex),
-    roughness,
-    metalness,
-  })
+/* ── Global In-Memory Model Cache to prevent any re-fetching or flashing ── */
+interface CachedModel {
+  scene: Object3D
+  animations: any[]
 }
 
-/* ════════════════════════════════════════
-   DYNAMIC GLB MODEL LOADER
-   Loads `/models/${id}.glb` or `/models/${id}_3d_model.glb`,
-   auto-centers, normalizes scale, and plays animations if embedded.
-   Renders procedural model immediately while loading so canvas is never blank.
-   ════════════════════════════════════════ */
-export function GLBModel({
-  id,
-  hovered = false,
-  selected = false,
-}: {
-  id: string
-  hovered?: boolean
-  selected?: boolean
-  onLoadFailed?: () => void
-}) {
-  const group = useRef<Group>(null)
-  const [gltfScene, setGltfScene] = useState<Object3D | null>(null)
-  const mixerRef = useRef<AnimationMixer | null>(null)
+const GLB_CACHE = new Map<string, CachedModel>()
+const PENDING_LOADS = new Map<string, Promise<CachedModel | null>>()
 
-  useEffect(() => {
-    let isMounted = true
-    const loader = new GLTFLoader()
-    const possibleUrls = [
-      `/models/${id}.glb`,
-      `/models/${id}_3d_model.glb`,
-      `/models/${id === 'rabbit' ? 'raabit_3d_model.glb' : `${id}.glb`}`,
-    ]
+/* ── Helper to preload models in background ── */
+export function preloadGLBModel(id: string): Promise<CachedModel | null> {
+  if (GLB_CACHE.has(id)) {
+    return Promise.resolve(GLB_CACHE.get(id)!)
+  }
+  if (PENDING_LOADS.has(id)) {
+    return PENDING_LOADS.get(id)!
+  }
 
-    let currentUrlIndex = 0
+  const loader = new GLTFLoader()
+  const possibleUrls = [
+    `/models/${id}.glb`,
+    `/models/${id}_3d_model.glb`,
+    `/models/${id === 'rabbit' ? 'raabit_3d_model.glb' : `${id}.glb`}`,
+  ]
 
-    function attemptLoad() {
-      if (currentUrlIndex >= possibleUrls.length) {
+  const loadPromise = new Promise<CachedModel | null>((resolve) => {
+    let urlIndex = 0
+
+    function tryNext() {
+      if (urlIndex >= possibleUrls.length) {
+        resolve(null)
         return
       }
-
-      const url = possibleUrls[currentUrlIndex]
-
+      const url = possibleUrls[urlIndex]
       loader.load(
         url,
         (gltf) => {
-          if (!isMounted) return
-          const scene = gltf.scene.clone(true)
-
-          // Center & normalize scale based on bounding box
+          const scene = gltf.scene
+          // Normalize bounding box & scale once
           const box = new Box3().setFromObject(scene)
           const size = new Vector3()
           box.getSize(size)
@@ -80,7 +65,6 @@ export function GLBModel({
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
                 mats.forEach((m: any) => {
                   m.needsUpdate = true
-                  // Ensure materials are bright enough in B&W theme
                   if (m.color && m.color.r < 0.08 && m.color.g < 0.08 && m.color.b < 0.08) {
                     m.color.setRGB(0.28, 0.28, 0.28)
                   }
@@ -89,26 +73,117 @@ export function GLBModel({
             }
           })
 
-          // Setup animation mixer if animations exist
-          if (gltf.animations && gltf.animations.length > 0) {
-            const mixer = new AnimationMixer(scene)
-            const action = mixer.clipAction(gltf.animations[0])
-            action.setLoop(LoopRepeat, Infinity)
-            action.play()
-            mixerRef.current = mixer
+          const cached: CachedModel = {
+            scene,
+            animations: gltf.animations || [],
           }
-
-          setGltfScene(scene)
+          GLB_CACHE.set(id, cached)
+          resolve(cached)
         },
         undefined,
         () => {
-          currentUrlIndex++
-          attemptLoad()
+          urlIndex++
+          tryNext()
         }
       )
     }
 
-    attemptLoad()
+    tryNext()
+  })
+
+  PENDING_LOADS.set(id, loadPromise)
+  return loadPromise
+}
+
+// Auto-preload all 6 models on initial script evaluation
+if (typeof window !== 'undefined') {
+  ;['penguin', 'owl', 'deer', 'panda', 'rabbit', 'capybara'].forEach((id) => {
+    preloadGLBModel(id)
+  })
+}
+
+/* ── Shared Material factory for procedural fallbacks ── */
+function monoMaterial(colorHex: string, roughness = 0.4, metalness = 0.1) {
+  return new MeshStandardMaterial({
+    color: new Color(colorHex),
+    roughness,
+    metalness,
+  })
+}
+
+/* ════════════════════════════════════════
+   SMOOTH LOADING PLACEHOLDER (No blocky mesh flash)
+   ════════════════════════════════════════ */
+function LoadingAura() {
+  const meshRef = useRef<Mesh>(null)
+
+  useFrame(() => {
+    if (!meshRef.current) return
+    const t = Date.now() / 1000
+    meshRef.current.rotation.y = t * 0.8
+    const s = 1 + Math.sin(t * 2) * 0.08
+    meshRef.current.scale.set(s, s, s)
+  })
+
+  return (
+    <group position={[0, -0.2, 0]}>
+      {/* Subtle glowing floor ring */}
+      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.6, 0.65, 32]} />
+        <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
+/* ════════════════════════════════════════
+   DYNAMIC GLB MODEL LOADER (Glitch-Free)
+   ════════════════════════════════════════ */
+export function GLBModel({
+  id,
+  hovered = false,
+  selected = false,
+}: {
+  id: string
+  hovered?: boolean
+  selected?: boolean
+}) {
+  const group = useRef<Group>(null)
+  const [modelScene, setModelScene] = useState<Object3D | null>(() => {
+    const cached = GLB_CACHE.get(id)
+    return cached ? cached.scene.clone(true) : null
+  })
+  const mixerRef = useRef<AnimationMixer | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    if (GLB_CACHE.has(id)) {
+      const cached = GLB_CACHE.get(id)!
+      const scene = cached.scene.clone(true)
+      if (cached.animations && cached.animations.length > 0) {
+        const mixer = new AnimationMixer(scene)
+        const action = mixer.clipAction(cached.animations[0])
+        action.setLoop(LoopRepeat, Infinity)
+        action.play()
+        mixerRef.current = mixer
+      }
+      setModelScene(scene)
+      return
+    }
+
+    preloadGLBModel(id).then((cached) => {
+      if (!isMounted || !cached) return
+      const scene = cached.scene.clone(true)
+      if (cached.animations && cached.animations.length > 0) {
+        const mixer = new AnimationMixer(scene)
+        const action = mixer.clipAction(cached.animations[0])
+        action.setLoop(LoopRepeat, Infinity)
+        action.play()
+        mixerRef.current = mixer
+      }
+      setModelScene(scene)
+    })
 
     return () => {
       isMounted = false
@@ -131,18 +206,16 @@ export function GLBModel({
     group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
-  // If GLB is loaded, show GLB model
-  if (gltfScene) {
-    return (
-      <group ref={group}>
-        <primitive object={gltfScene} />
-        {selected && <pointLight color="#FFFFFF" intensity={2.5} distance={4} />}
-      </group>
-    )
-  }
-
-  // Fallback while loading or if GLB not found: display procedural model immediately
-  return <ProceduralCharacterModel id={id} hovered={hovered} selected={selected} />
+  return (
+    <group ref={group}>
+      {modelScene ? (
+        <primitive object={modelScene} />
+      ) : (
+        <LoadingAura />
+      )}
+      {selected && <pointLight color="#FFFFFF" intensity={2.5} distance={4} />}
+    </group>
+  )
 }
 
 /* ════════════════════════════════════════
@@ -164,53 +237,43 @@ export function OwlModel({ hovered, selected }: { hovered?: boolean; selected?: 
   return (
     <group ref={group}>
       <mesh position={[0, -0.3, 0]} castShadow>
-        <icosahedronGeometry args={[0.7, 1]} />
-        <primitive object={monoMaterial('#2B2B2B')} attach="material" />
+        <capsuleGeometry args={[0.55, 0.7, 4, 16]} />
+        <primitive object={monoMaterial('#262626')} attach="material" />
       </mesh>
-      <mesh position={[0, -0.25, 0.55]}>
-        <sphereGeometry args={[0.38, 8, 8]} />
-        <primitive object={monoMaterial('#E0E0E0')} attach="material" />
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <sphereGeometry args={[0.48, 16, 16]} />
+        <primitive object={monoMaterial('#404040')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <sphereGeometry args={[0.52, 10, 10]} />
-        <primitive object={monoMaterial('#3D3D3D')} attach="material" />
+      <mesh position={[0, -0.22, 0.28]}>
+        <sphereGeometry args={[0.38, 16, 16]} />
+        <primitive object={monoMaterial('#FAFAFA', 0.6)} attach="material" />
       </mesh>
       {[-0.2, 0.2].map((x, i) => (
-        <group key={i} position={[x, 0.6, 0.42]}>
+        <group key={i} position={[x, 0.52, 0.38]}>
           <mesh>
-            <sphereGeometry args={[0.14, 8, 8]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+            <circleGeometry args={[0.16, 16]} />
+            <primitive object={monoMaterial('#FAFAFA', 0.2)} attach="material" />
           </mesh>
-          <mesh position={[0, 0, 0.09]}>
-            <sphereGeometry args={[0.075, 8, 8]} />
-            <primitive object={monoMaterial('#0A0A0A')} attach="material" />
-          </mesh>
-          <mesh position={[0.04, 0.04, 0.15]}>
-            <sphereGeometry args={[0.025, 6, 6]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+          <mesh position={[0, 0, 0.01]}>
+            <circleGeometry args={[0.08, 16]} />
+            <primitive object={monoMaterial('#0A0A0A', 0.1)} attach="material" />
           </mesh>
         </group>
       ))}
-      {[-0.28, 0.28].map((x, i) => (
-        <mesh key={i} position={[x, 1.0, 0.05]} rotation={[0, 0, i === 0 ? -0.4 : 0.4]}>
-          <coneGeometry args={[0.1, 0.3, 5]} />
-          <primitive object={monoMaterial('#2B2B2B')} attach="material" />
-        </mesh>
-      ))}
-      {[-1, 1].map((side, i) => (
-        <mesh key={i} position={[side * 0.75, -0.2, -0.1]} rotation={[0.1, side * 0.3, side * 0.4]}>
-          <boxGeometry args={[0.25, 0.65, 0.1]} />
-          <primitive object={monoMaterial('#1E1E1E')} attach="material" />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.5, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.07, 0.18, 4]} />
-        <primitive object={monoMaterial('#E0E0E0')} attach="material" />
+      <mesh position={[0, 0.36, 0.48]} rotation={[0.4, 0, 0]}>
+        <coneGeometry args={[0.08, 0.22, 4]} />
+        <primitive object={monoMaterial('#E5E5E5')} attach="material" />
       </mesh>
-      {[-0.2, 0.2].map((x, i) => (
-        <mesh key={i} position={[x, -0.95, 0.1]} rotation={[-0.3, 0, 0]}>
-          <cylinderGeometry args={[0.06, 0.04, 0.15, 5]} />
-          <primitive object={monoMaterial('#9E9E9E')} attach="material" />
+      {[-0.22, 0.22].map((x, i) => (
+        <mesh key={i} position={[x, 0.88, 0.08]} rotation={[0, 0, i === 0 ? 0.3 : -0.3]}>
+          <coneGeometry args={[0.12, 0.32, 4]} />
+          <primitive object={monoMaterial('#171717')} attach="material" />
+        </mesh>
+      ))}
+      {[-0.58, 0.58].map((x, i) => (
+        <mesh key={i} position={[x, -0.25, 0]} rotation={[0, 0, i === 0 ? -0.2 : 0.2]}>
+          <boxGeometry args={[0.12, 0.7, 0.4]} />
+          <primitive object={monoMaterial('#171717')} attach="material" />
         </mesh>
       ))}
       {selected && <pointLight color="#FFFFFF" intensity={2} distance={3} />}
@@ -226,71 +289,51 @@ export function DeerModel({ hovered, selected }: { hovered?: boolean; selected?:
     if (!group.current) return
     const t = Date.now() / 1000
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
-    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.1) * 0.02
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.25)
+    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
+    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
   return (
     <group ref={group}>
-      <mesh position={[0, -0.3, 0]}>
-        <boxGeometry args={[0.7, 0.65, 0.55]} />
-        <primitive object={monoMaterial('#383838')} attach="material" />
+      <mesh position={[0, -0.4, 0]} castShadow>
+        <boxGeometry args={[0.65, 0.75, 0.5]} />
+        <primitive object={monoMaterial('#262626')} attach="material" />
       </mesh>
-      <mesh position={[0, -0.32, 0.2]}>
-        <sphereGeometry args={[0.32, 8, 8]} />
-        <primitive object={monoMaterial('#CCCCCC')} attach="material" />
+      <mesh position={[0, 0.15, 0.08]} rotation={[0.2, 0, 0]}>
+        <cylinderGeometry args={[0.16, 0.2, 0.4, 8]} />
+        <primitive object={monoMaterial('#404040')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.12, 0.1]} rotation={[0.3, 0, 0]}>
-        <cylinderGeometry args={[0.18, 0.22, 0.5, 7]} />
-        <primitive object={monoMaterial('#383838')} attach="material" />
+      <mesh position={[0, 0.42, 0.22]}>
+        <sphereGeometry args={[0.34, 16, 16]} />
+        <primitive object={monoMaterial('#525252')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.62, 0.18]}>
-        <icosahedronGeometry args={[0.38, 1]} />
-        <primitive object={monoMaterial('#383838')} attach="material" />
+      <mesh position={[0, 0.32, 0.46]}>
+        <coneGeometry args={[0.14, 0.22, 6]} />
+        <primitive object={monoMaterial('#E5E5E5')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.55, 0.5]}>
-        <sphereGeometry args={[0.22, 8, 8]} />
-        <primitive object={monoMaterial('#B8B8B8')} attach="material" />
+      <mesh position={[0, 0.38, 0.58]}>
+        <sphereGeometry args={[0.045, 8, 8]} />
+        <primitive object={monoMaterial('#0A0A0A')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.5, 0.67]}>
-        <sphereGeometry args={[0.06, 6, 6]} />
-        <primitive object={monoMaterial('#FFFFFF')} attach="material" />
-      </mesh>
-      {[-0.18, 0.18].map((x, i) => (
-        <group key={i} position={[x, 0.68, 0.46]}>
-          <mesh>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <primitive object={monoMaterial('#0A0A0A')} attach="material" />
-          </mesh>
-          <mesh position={[0.03, 0.03, 0.06]}>
-            <sphereGeometry args={[0.025, 6, 6]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
-          </mesh>
-        </group>
-      ))}
-      {[-0.32, 0.32].map((x, i) => (
-        <mesh key={i} position={[x, 0.92, 0.1]} rotation={[0, 0, i === 0 ? -0.6 : 0.6]}>
-          <coneGeometry args={[0.12, 0.35, 5]} />
-          <primitive object={monoMaterial('#383838')} attach="material" />
+      {[-0.14, 0.14].map((x, i) => (
+        <mesh key={i} position={[x, 0.48, 0.46]}>
+          <sphereGeometry args={[0.055, 8, 8]} />
+          <primitive object={monoMaterial('#0A0A0A')} attach="material" />
         </mesh>
       ))}
-      {[-0.22, 0.22].map((x, side) => (
-        <group key={side} position={[x, 1.05, 0.05]}>
-          <mesh rotation={[0, 0, side === 0 ? -0.3 : 0.3]}>
-            <cylinderGeometry args={[0.03, 0.04, 0.45, 5]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
-          </mesh>
-          <mesh position={[side === 0 ? -0.1 : 0.1, 0.2, 0]} rotation={[0, 0, side === 0 ? -1.1 : 1.1]}>
-            <cylinderGeometry args={[0.02, 0.03, 0.25, 4]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+      {[-0.28, 0.28].map((x, i) => (
+        <mesh key={i} position={[x, 0.62, 0.12]} rotation={[0, 0, i === 0 ? 0.6 : -0.6]}>
+          <coneGeometry args={[0.08, 0.24, 4]} />
+          <primitive object={monoMaterial('#171717')} attach="material" />
+        </mesh>
+      ))}
+      {[-0.2, 0.2].map((x, i) => (
+        <group key={i} position={[x, 0.72, 0.1]}>
+          <mesh rotation={[0, 0, i === 0 ? 0.35 : -0.35]}>
+            <cylinderGeometry args={[0.03, 0.03, 0.4, 6]} />
+            <primitive object={monoMaterial('#D4D4D4', 0.2, 0.2)} attach="material" />
           </mesh>
         </group>
-      ))}
-      {[[-0.22, -0.15], [0.22, -0.15], [-0.22, 0.15], [0.22, 0.15]].map(([x, z], i) => (
-        <mesh key={i} position={[x, -0.75, z]}>
-          <cylinderGeometry args={[0.06, 0.04, 0.35, 5]} />
-          <primitive object={monoMaterial('#262626')} attach="material" />
-        </mesh>
       ))}
       {selected && <pointLight color="#FFFFFF" intensity={2} distance={3} />}
     </group>
@@ -305,62 +348,46 @@ export function PandaModel({ hovered, selected }: { hovered?: boolean; selected?
     if (!group.current) return
     const t = Date.now() / 1000
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
-    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.3) * 0.02
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.2)
+    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
+    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
   return (
     <group ref={group}>
-      <mesh position={[0, -0.25, 0]}>
-        <sphereGeometry args={[0.72, 10, 10]} />
-        <primitive object={monoMaterial('#F0F0F0')} attach="material" />
+      <mesh position={[0, -0.35, 0]} castShadow>
+        <sphereGeometry args={[0.62, 16, 16]} />
+        <primitive object={monoMaterial('#FAFAFA')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.65, 0]}>
-        <sphereGeometry args={[0.55, 10, 10]} />
-        <primitive object={monoMaterial('#F0F0F0')} attach="material" />
+      <mesh position={[0, 0.38, 0]} castShadow>
+        <sphereGeometry args={[0.48, 16, 16]} />
+        <primitive object={monoMaterial('#FAFAFA')} attach="material" />
       </mesh>
-      {[-0.18, 0.18].map((x, i) => (
-        <mesh key={i} position={[x, 0.72, 0.42]}>
-          <sphereGeometry args={[0.14, 8, 8]} />
-          <primitive object={monoMaterial('#121212')} attach="material" />
+      {[-0.38, 0.38].map((x, i) => (
+        <mesh key={i} position={[x, 0.76, 0]}>
+          <sphereGeometry args={[0.18, 12, 12]} />
+          <primitive object={monoMaterial('#171717')} attach="material" />
         </mesh>
       ))}
       {[-0.18, 0.18].map((x, i) => (
-        <group key={i} position={[x, 0.72, 0.52]}>
-          <mesh>
-            <sphereGeometry args={[0.085, 8, 8]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+        <group key={i} position={[x, 0.42, 0.4]}>
+          <mesh rotation={[0, 0, i === 0 ? 0.2 : -0.2]}>
+            <circleGeometry args={[0.12, 12]} />
+            <primitive object={monoMaterial('#171717')} attach="material" />
           </mesh>
-          <mesh position={[0, 0, 0.06]}>
-            <sphereGeometry args={[0.05, 7, 7]} />
-            <primitive object={monoMaterial('#000000')} attach="material" />
-          </mesh>
-          <mesh position={[0.025, 0.025, 0.1]}>
-            <sphereGeometry args={[0.018, 6, 6]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+          <mesh position={[0, 0, 0.01]}>
+            <circleGeometry args={[0.05, 8]} />
+            <primitive object={monoMaterial('#FAFAFA')} attach="material" />
           </mesh>
         </group>
       ))}
-      {[-0.38, 0.38].map((x, i) => (
-        <mesh key={i} position={[x, 1.1, 0.0]}>
-          <sphereGeometry args={[0.16, 8, 8]} />
-          <primitive object={monoMaterial('#121212')} attach="material" />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.57, 0.53]}>
-        <sphereGeometry args={[0.06, 7, 7]} />
-        <primitive object={monoMaterial('#121212')} attach="material" />
+      <mesh position={[0, 0.28, 0.44]}>
+        <sphereGeometry args={[0.07, 8, 8]} />
+        <primitive object={monoMaterial('#171717')} attach="material" />
       </mesh>
-      {[-0.8, 0.8].map((x, i) => (
-        <mesh key={i} position={[x, -0.1, 0.2]} rotation={[0, 0, i === 0 ? 0.5 : -0.5]}>
-          <sphereGeometry args={[0.22, 8, 8]} />
-          <primitive object={monoMaterial('#121212')} attach="material" />
-        </mesh>
-      ))}
-      {[-0.3, 0.3].map((x, i) => (
-        <mesh key={i} position={[x, -0.88, 0.3]}>
-          <sphereGeometry args={[0.2, 8, 8]} />
-          <primitive object={monoMaterial('#121212')} attach="material" />
+      {[-0.55, 0.55].map((x, i) => (
+        <mesh key={i} position={[x, -0.2, 0.1]} rotation={[0, 0, i === 0 ? -0.4 : 0.4]}>
+          <capsuleGeometry args={[0.16, 0.45, 4, 8]} />
+          <primitive object={monoMaterial('#171717')} attach="material" />
         </mesh>
       ))}
       {selected && <pointLight color="#FFFFFF" intensity={2} distance={3} />}
@@ -376,51 +403,41 @@ export function RabbitModel({ hovered, selected }: { hovered?: boolean; selected
     if (!group.current) return
     const t = Date.now() / 1000
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
-    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.4) * 0.02
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.22)
+    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
+    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
   return (
     <group ref={group}>
-      <mesh position={[0, -0.28, 0]} scale={[1, 1.15, 0.9]}>
-        <sphereGeometry args={[0.62, 10, 10]} />
-        <primitive object={monoMaterial('#D6D6D6')} attach="material" />
+      <mesh position={[0, -0.38, 0]} castShadow>
+        <sphereGeometry args={[0.54, 16, 16]} />
+        <primitive object={monoMaterial('#E5E5E5')} attach="material" />
       </mesh>
-      <mesh position={[0, -0.22, 0.4]}>
-        <sphereGeometry args={[0.35, 8, 8]} />
+      <mesh position={[0, 0.26, 0]} castShadow>
+        <sphereGeometry args={[0.42, 16, 16]} />
         <primitive object={monoMaterial('#FAFAFA')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.58, 0]}>
-        <sphereGeometry args={[0.45, 10, 10]} />
-        <primitive object={monoMaterial('#D6D6D6')} attach="material" />
-      </mesh>
-      {[-0.16, 0.16].map((x, i) => (
-        <group key={i} position={[x, 0.65, 0.38]}>
-          <mesh>
-            <sphereGeometry args={[0.085, 8, 8]} />
-            <primitive object={monoMaterial('#171717')} attach="material" />
+      {[-0.18, 0.18].map((x, i) => (
+        <group key={i} position={[x, 0.88, 0]}>
+          <mesh rotation={[0, 0, i === 0 ? -0.1 : 0.1]}>
+            <capsuleGeometry args={[0.1, 0.65, 4, 8]} />
+            <primitive object={monoMaterial('#FAFAFA')} attach="material" />
           </mesh>
-          <mesh position={[0.03, 0.03, 0.06]}>
-            <sphereGeometry args={[0.03, 6, 6]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+          <mesh position={[0, 0, 0.04]} rotation={[0, 0, i === 0 ? -0.1 : 0.1]}>
+            <capsuleGeometry args={[0.05, 0.45, 4, 8]} />
+            <primitive object={monoMaterial('#737373')} attach="material" />
           </mesh>
         </group>
       ))}
-      <mesh position={[0, 0.54, 0.44]}>
-        <sphereGeometry args={[0.05, 6, 6]} />
-        <primitive object={monoMaterial('#FFFFFF')} attach="material" />
-      </mesh>
-      <mesh position={[-0.2, 1.2, 0]} rotation={[0, 0, -0.15]}>
-        <capsuleGeometry args={[0.1, 0.55, 4, 8]} />
-        <primitive object={monoMaterial('#D6D6D6')} attach="material" />
-      </mesh>
-      <mesh position={[0.2, 1.2, 0]} rotation={[0, 0, 0.15]}>
-        <capsuleGeometry args={[0.1, 0.55, 4, 8]} />
-        <primitive object={monoMaterial('#D6D6D6')} attach="material" />
-      </mesh>
-      <mesh position={[0, -0.2, -0.62]}>
-        <sphereGeometry args={[0.15, 7, 7]} />
-        <primitive object={monoMaterial('#FAFAFA')} attach="material" />
+      {[-0.14, 0.14].map((x, i) => (
+        <mesh key={i} position={[x, 0.32, 0.38]}>
+          <sphereGeometry args={[0.055, 8, 8]} />
+          <primitive object={monoMaterial('#0A0A0A')} attach="material" />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.22, 0.42]}>
+        <coneGeometry args={[0.05, 0.06, 3]} />
+        <primitive object={monoMaterial('#525252')} attach="material" />
       </mesh>
       {selected && <pointLight color="#FFFFFF" intensity={2} distance={3} />}
     </group>
@@ -435,40 +452,40 @@ export function CapybaraModel({ hovered, selected }: { hovered?: boolean; select
     if (!group.current) return
     const t = Date.now() / 1000
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
-    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 0.9) * 0.02
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.18)
+    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
+    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
   return (
     <group ref={group}>
-      <mesh position={[0, -0.2, 0]} scale={[1.15, 0.85, 0.9]}>
-        <capsuleGeometry args={[0.52, 0.5, 6, 10]} />
-        <primitive object={monoMaterial('#333333')} attach="material" />
+      <mesh position={[0, -0.32, 0]} castShadow>
+        <boxGeometry args={[0.78, 0.65, 0.88]} />
+        <primitive object={monoMaterial('#404040')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.55, 0.2]} scale={[1.1, 0.85, 0.9]}>
-        <boxGeometry args={[0.75, 0.55, 0.65]} />
-        <primitive object={monoMaterial('#333333')} attach="material" />
+      <mesh position={[0, 0.18, 0.18]} castShadow>
+        <boxGeometry args={[0.62, 0.52, 0.68]} />
+        <primitive object={monoMaterial('#525252')} attach="material" />
       </mesh>
-      <mesh position={[0, 0.44, 0.6]} scale={[0.9, 0.65, 0.9]}>
-        <boxGeometry args={[0.48, 0.32, 0.35]} />
-        <primitive object={monoMaterial('#555555')} attach="material" />
+      <mesh position={[0, 0.08, 0.54]}>
+        <boxGeometry args={[0.48, 0.36, 0.22]} />
+        <primitive object={monoMaterial('#262626')} attach="material" />
       </mesh>
-      {[-0.27, 0.27].map((x, i) => (
-        <group key={i} position={[x, 0.67, 0.42]}>
-          <mesh>
-            <sphereGeometry args={[0.075, 8, 8]} />
-            <primitive object={monoMaterial('#0A0A0A')} attach="material" />
-          </mesh>
-          <mesh position={[0.025, 0.025, 0.05]}>
-            <sphereGeometry args={[0.025, 6, 6]} />
-            <primitive object={monoMaterial('#FFFFFF')} attach="material" />
-          </mesh>
-        </group>
+      {[-0.14, 0.14].map((x, i) => (
+        <mesh key={i} position={[x, 0.08, 0.66]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <primitive object={monoMaterial('#0A0A0A')} attach="material" />
+        </mesh>
+      ))}
+      {[-0.24, 0.24].map((x, i) => (
+        <mesh key={i} position={[x, 0.28, 0.48]}>
+          <boxGeometry args={[0.06, 0.03, 0.06]} />
+          <primitive object={monoMaterial('#0A0A0A')} attach="material" />
+        </mesh>
       ))}
       {[-0.32, 0.32].map((x, i) => (
-        <mesh key={i} position={[x, 0.87, 0.15]}>
-          <sphereGeometry args={[0.1, 7, 7]} />
-          <primitive object={monoMaterial('#333333')} attach="material" />
+        <mesh key={i} position={[x, 0.44, 0.05]} rotation={[0, 0, i === 0 ? 0.3 : -0.3]}>
+          <sphereGeometry args={[0.09, 8, 8]} />
+          <primitive object={monoMaterial('#262626')} attach="material" />
         </mesh>
       ))}
       {selected && <pointLight color="#FFFFFF" intensity={2} distance={3} />}
@@ -484,38 +501,29 @@ export function PenguinModel({ hovered, selected }: { hovered?: boolean; selecte
     if (!group.current) return
     const t = Date.now() / 1000
     group.current.scale.y = 1 + Math.sin(t * 1.5) * 0.015
-    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.4) * 0.02
-    group.current.rotation.z = Math.sin(t * 2) * 0.04
-    group.current.rotation.y += delta * (selected ? 1.4 : 0.25)
+    group.current.position.y = hovered ? Math.sin(t * 3) * 0.05 + 0.05 : Math.sin(t * 1.2) * 0.02
+    group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
   return (
     <group ref={group}>
-      <mesh position={[0, -0.2, 0]} scale={[1, 1.1, 0.95]}>
-        <capsuleGeometry args={[0.55, 0.45, 8, 12]} />
-        <primitive object={monoMaterial('#1C1C1C')} attach="material" />
+      <mesh position={[0, -0.15, 0]} castShadow>
+        <capsuleGeometry args={[0.52, 0.95, 4, 16]} />
+        <primitive object={monoMaterial('#121212', 0.3, 0.1)} attach="material" />
       </mesh>
-      <mesh position={[0, -0.15, 0.35]} scale={[0.85, 1, 0.6]}>
-        <sphereGeometry args={[0.48, 10, 10]} />
-        <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+      <mesh position={[0, -0.15, 0.22]}>
+        <sphereGeometry args={[0.42, 16, 16]} />
+        <primitive object={monoMaterial('#FFFFFF', 0.5, 0.05)} attach="material" />
       </mesh>
-      <mesh position={[0, 0.52, 0.05]} scale={[1.05, 0.95, 1.0]}>
-        <sphereGeometry args={[0.46, 10, 10]} />
-        <primitive object={monoMaterial('#1C1C1C')} attach="material" />
-      </mesh>
-      <mesh position={[0, 0.52, 0.32]} scale={[0.85, 0.75, 0.4]}>
-        <sphereGeometry args={[0.36, 10, 10]} />
-        <primitive object={monoMaterial('#FFFFFF')} attach="material" />
-      </mesh>
-      {[-0.15, 0.15].map((x, i) => (
-        <group key={i} position={[x, 0.58, 0.43]}>
+      {[-0.16, 0.16].map((x, i) => (
+        <group key={i} position={[x, 0.52, 0.38]}>
           <mesh>
-            <sphereGeometry args={[0.075, 8, 8]} />
-            <primitive object={monoMaterial('#0A0A0A')} attach="material" />
-          </mesh>
-          <mesh position={[0.025, 0.025, 0.05]}>
-            <sphereGeometry args={[0.026, 6, 6]} />
+            <circleGeometry args={[0.1, 16]} />
             <primitive object={monoMaterial('#FFFFFF')} attach="material" />
+          </mesh>
+          <mesh position={[0, 0, 0.01]}>
+            <circleGeometry args={[0.05, 12]} />
+            <primitive object={monoMaterial('#0A0A0A')} attach="material" />
           </mesh>
         </group>
       ))}
@@ -538,29 +546,6 @@ export function PenguinModel({ hovered, selected }: { hovered?: boolean; selecte
       {selected && <pointLight color="#FFFFFF" intensity={2} distance={3} />}
     </group>
   )
-}
-
-/* ════════════════════════════════════════
-   PROCEDURAL CHARACTER MODEL SWITCHER
-   ════════════════════════════════════════ */
-export function ProceduralCharacterModel({
-  id,
-  hovered = false,
-  selected = false,
-}: {
-  id: string
-  hovered?: boolean
-  selected?: boolean
-}) {
-  switch (id) {
-    case 'owl':      return <OwlModel hovered={hovered} selected={selected} />
-    case 'deer':     return <DeerModel hovered={hovered} selected={selected} />
-    case 'panda':    return <PandaModel hovered={hovered} selected={selected} />
-    case 'rabbit':   return <RabbitModel hovered={hovered} selected={selected} />
-    case 'capybara': return <CapybaraModel hovered={hovered} selected={selected} />
-    case 'penguin':  return <PenguinModel hovered={hovered} selected={selected} />
-    default:         return <OwlModel hovered={hovered} selected={selected} />
-  }
 }
 
 /* ════════════════════════════════════════

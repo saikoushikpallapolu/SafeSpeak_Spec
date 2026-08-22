@@ -154,7 +154,7 @@ const QUESTIONS: QuestionConfig[] = [
 
 export default function CheckIn() {
   const navigate = useNavigate()
-  const charId = sessionStorage.getItem('character') || 'owl'
+  const charId = sessionStorage.getItem('character') || 'penguin'
   const character = getCharacterById(charId) || CHARACTERS[0]
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -198,7 +198,6 @@ export default function CheckIn() {
 
   // Next Question logic
   const handleNext = () => {
-    // Safety check on question 9
     if (currentQ.id === 9) {
       sessionStorage.setItem('checkin_answers', JSON.stringify(answers))
       if (answers.safety === 'yes') {
@@ -241,9 +240,9 @@ export default function CheckIn() {
   }
 
   return (
-    <div className="checkin-split-page">
-      {/* Top Header */}
-      <header className="checkin-split-header">
+    <div className="checkin-immersive-page">
+      {/* Top Mobile Bar */}
+      <div className="checkin-top-status-bar">
         <button
           className="btn btn-ghost checkin-back-btn"
           onClick={handlePrev}
@@ -255,7 +254,6 @@ export default function CheckIn() {
           <span className="font-mono text-xs">BACK</span>
         </button>
 
-        {/* Segmented Progress Tracker */}
         <div className="checkin-progress-tracker" role="progressbar" aria-valuemax={totalQuestions} aria-valuenow={currentStepIndex + 1}>
           {QUESTIONS.map((q, i) => (
             <div
@@ -270,123 +268,150 @@ export default function CheckIn() {
           <span className="checkin-counter__sep">/</span>
           <span className="checkin-counter__tot">0{totalQuestions}</span>
         </div>
-      </header>
+      </div>
 
-      {/* Main Split Grid */}
-      <div className="checkin-split-layout">
-        
-        {/* LEFT COLUMN: 3D Companion Avatar Standing & Speech Bubble */}
-        <div className="checkin-companion-col">
-          <div className="checkin-companion-card">
-            {/* 3D Canvas Viewport */}
-            <div className="checkin-avatar-canvas">
-              <Canvas
-                camera={{ position: [0, 0, 3.4], fov: 40 }}
-                gl={{ antialias: true, alpha: true }}
-                dpr={[1, 2]}
-              >
-                <ambientLight intensity={1.4} />
-                <directionalLight position={[3, 5, 3]} intensity={2.2} color="#FFFFFF" />
-                <directionalLight position={[-3, -2, -2]} intensity={1.0} color="#FFFFFF" />
-                <pointLight position={[0, 2, 2]} intensity={1.5} color="#FFFFFF" />
-                <hemisphereLight args={['#FFFFFF', '#333333', 1.0]} />
-                <Suspense fallback={null}>
-                  <CharacterModelRenderer id={character.id} hovered selected />
-                </Suspense>
-              </Canvas>
-            </div>
+      {/* Main Full-Height 50/50 Stage */}
+      <div className="checkin-stage-container">
 
-            {/* Companion Dialogue / Tip Bubble */}
-            <div className="checkin-companion-dialogue">
-              <div className="checkin-dialogue-tag font-mono">
-                {character.emoji} {character.name.toUpperCase()} (YOUR COMPANION)
-              </div>
-              <p className="checkin-dialogue-text font-display">
-                "{currentQ.companionTip}"
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Question & Answer Option Card */}
-        <div className="checkin-form-col">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentQ.id}
-              className="checkin-q-card"
-              initial={{ opacity: 0, x: 28 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -28 }}
-              transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+        {/* LEFT COLUMN: Full-Height Mascot with Thought Cloud */}
+        <section className="checkin-companion-stage">
+          {/* 3D Character Canvas filling entire left background */}
+          <div className="checkin-mascot-canvas-wrap">
+            <Canvas
+              camera={{ position: [0, -0.1, 3.2], fov: 42 }}
+              gl={{ antialias: true, alpha: true }}
+              dpr={[1, 2]}
             >
-              {/* Question Header */}
-              <div className="checkin-q-header">
-                <span className="checkin-q-badge font-mono">
-                  QUESTION 0{currentQ.id} OF 0{totalQuestions}
-                </span>
-                <h1 className="checkin-q-title font-display">
-                  {currentQ.title}
+              <ambientLight intensity={1.5} />
+              <directionalLight position={[4, 7, 4]} intensity={2.5} color="#FFFFFF" />
+              <directionalLight position={[-4, -2, -3]} intensity={1.0} color="#FFFFFF" />
+              <pointLight position={[0, 2, 2]} intensity={1.8} color="#FFFFFF" />
+              <hemisphereLight args={['#FFFFFF', '#333333', 1.2]} />
+              <Suspense fallback={null}>
+                <CharacterModelRenderer id={character.id} hovered selected />
+              </Suspense>
+            </Canvas>
+          </div>
+
+          {/* Thought Cloud Asking The Question */}
+          <div className="checkin-thought-cloud-wrapper">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentQ.id}
+                className="checkin-thought-cloud"
+                initial={{ opacity: 0, y: -16, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.95 }}
+                transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+              >
+                <div className="checkin-thought-header">
+                  <div className="checkin-thought-badge font-mono">
+                    <span className="thought-icon">💭</span>
+                    <span>{character.name.toUpperCase()} IS ASKING</span>
+                  </div>
+                  <span className="checkin-thought-step font-mono">
+                    {currentStepIndex + 1}/{totalQuestions}
+                  </span>
+                </div>
+
+                <h1 className="checkin-thought-question font-display">
+                  "{currentQ.title}"
                 </h1>
-                <p className="checkin-q-subtitle">
-                  {currentQ.subtitle}
+
+                <p className="checkin-thought-whisper font-body">
+                  {currentQ.companionTip}
                 </p>
-              </div>
 
-              {/* Dynamic Answer Controls */}
-              <div className="checkin-q-body">
+                {/* Cloud Tail Bubbles */}
+                <div className="thought-tail-circle thought-tail-1" />
+                <div className="thought-tail-circle thought-tail-2" />
+                <div className="thought-tail-circle thought-tail-3" />
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-                {/* 1. Multi-Select Tag List (Q1, Q7, Q8) */}
-                {currentQ.type === 'multi' && currentQ.options && (
-                  <div className="checkin-options-grid">
-                    {currentQ.options.map(opt => {
-                      const isSelected = (answers[currentQ.key] || []).includes(opt.id)
-                      return (
-                        <button
-                          key={opt.id}
-                          className={`checkin-opt-btn ${isSelected ? 'checkin-opt-btn--selected' : ''}`}
-                          onClick={() => handleToggleMulti(currentQ.key, opt.id)}
-                        >
-                          <div className="checkin-opt-check">
-                            {isSelected && (
-                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className="checkin-opt-label">{opt.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+          {/* Mascot Info Overlay at bottom */}
+          <div className="checkin-mascot-footer">
+            <span className="checkin-mascot-pill font-mono">
+              {character.emoji} {character.name} · {character.trait}
+            </span>
+          </div>
+        </section>
 
-                {/* 2. Single-Select Card List (Q4, Q5, Q6) */}
-                {currentQ.type === 'single' && currentQ.options && (
-                  <div className="checkin-single-list">
-                    {currentQ.options.map(opt => {
-                      const isSelected = answers[currentQ.key] === opt.id
-                      return (
-                        <button
-                          key={opt.id}
-                          className={`checkin-single-card ${isSelected ? 'checkin-single-card--selected' : ''}`}
-                          onClick={() => handleSelectSingle(currentQ.key, opt.id)}
-                        >
-                          <div className="checkin-single-radio">
-                            {isSelected && <div className="checkin-radio-dot" />}
-                          </div>
-                          <div className="checkin-single-info">
-                            <span className="checkin-single-label">{opt.label}</span>
-                            {opt.sub && <span className="checkin-single-sub">{opt.sub}</span>}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+        {/* RIGHT COLUMN: Interactive Options & Controls */}
+        <section className="checkin-interactive-stage">
+          <div className="checkin-interactive-scrollable">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentQ.id}
+                className="checkin-options-panel"
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              >
+                {/* Section Guidance */}
+                <div className="checkin-guide-box">
+                  <span className="checkin-guide-tag font-mono">STEP 0{currentQ.id}</span>
+                  <p className="checkin-guide-subtitle font-body">
+                    {currentQ.subtitle}
+                  </p>
+                </div>
 
-                {/* 3. Discrete Step Slider (Q2: Duration) */}
-                {currentQ.type === 'slider-discrete' && currentQ.options && (
-                  <div className="checkin-discrete-slider-wrap">
+                {/* Dynamic Options Body */}
+                <div className="checkin-dynamic-controls">
+                  
+                  {/* 1. Multi-Select Options Grid (Q1, Q7, Q8) */}
+                  {currentQ.type === 'multi' && currentQ.options && (
+                    <div className="checkin-options-grid">
+                      {currentQ.options.map(opt => {
+                        const isSelected = (answers[currentQ.key] || []).includes(opt.id)
+                        return (
+                          <button
+                            key={opt.id}
+                            className={`checkin-opt-btn ${isSelected ? 'checkin-opt-btn--selected' : ''}`}
+                            onClick={() => handleToggleMulti(currentQ.key, opt.id)}
+                          >
+                            <div className="checkin-opt-check">
+                              {isSelected && (
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                  <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="checkin-opt-label">{opt.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* 2. Single-Select Card List (Q4, Q5, Q6) */}
+                  {currentQ.type === 'single' && currentQ.options && (
+                    <div className="checkin-single-list">
+                      {currentQ.options.map(opt => {
+                        const isSelected = answers[currentQ.key] === opt.id
+                        return (
+                          <button
+                            key={opt.id}
+                            className={`checkin-single-card ${isSelected ? 'checkin-single-card--selected' : ''}`}
+                            onClick={() => handleSelectSingle(currentQ.key, opt.id)}
+                          >
+                            <div className="checkin-single-radio">
+                              {isSelected && <div className="checkin-radio-dot" />}
+                            </div>
+                            <div className="checkin-single-info">
+                              <span className="checkin-single-label">{opt.label}</span>
+                              {opt.sub && <span className="checkin-single-sub">{opt.sub}</span>}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* 3. Discrete Step Slider (Q2: Duration) */}
+                  {currentQ.type === 'slider-discrete' && currentQ.options && (
                     <div className="checkin-discrete-cards">
                       {currentQ.options.map(opt => {
                         const isSelected = answers.duration === opt.id
@@ -401,82 +426,82 @@ export default function CheckIn() {
                         )
                       })}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* 4. Numeric Heaviness Slider (Q3: 1-5 scale) */}
-                {currentQ.type === 'slider-numeric' && (
-                  <div className="checkin-heaviness-widget">
-                    <div className="checkin-heaviness-track">
-                      <div
-                        className="checkin-heaviness-fill"
-                        style={{ width: `${((answers.heaviness - 1) / 4) * 100}%` }}
-                      />
-                      <input
-                        type="range"
-                        min={1}
-                        max={5}
-                        value={answers.heaviness}
-                        onChange={(e) => handleSelectSingle('heaviness', Number(e.target.value))}
-                        className="checkin-range-input"
-                        aria-label="Heaviness rating"
-                      />
+                  {/* 4. Numeric Heaviness Slider (Q3: 1-5 scale) */}
+                  {currentQ.type === 'slider-numeric' && (
+                    <div className="checkin-heaviness-widget">
+                      <div className="checkin-heaviness-track">
+                        <div
+                          className="checkin-heaviness-fill"
+                          style={{ width: `${((answers.heaviness - 1) / 4) * 100}%` }}
+                        />
+                        <input
+                          type="range"
+                          min={1}
+                          max={5}
+                          value={answers.heaviness}
+                          onChange={(e) => handleSelectSingle('heaviness', Number(e.target.value))}
+                          className="checkin-range-input"
+                          aria-label="Heaviness rating"
+                        />
+                      </div>
+                      <div className="checkin-heaviness-labels font-mono">
+                        {(currentQ.sliderLabels || []).map((l, i) => (
+                          <span
+                            key={i}
+                            className={`checkin-heaviness-label ${answers.heaviness === i + 1 ? 'checkin-heaviness-label--active' : ''}`}
+                          >
+                            {l}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="checkin-heaviness-badge font-display">
+                        Level {answers.heaviness} of 5 — {currentQ.sliderLabels?.[answers.heaviness - 1]}
+                      </div>
                     </div>
-                    <div className="checkin-heaviness-labels font-mono">
-                      {(currentQ.sliderLabels || []).map((l, i) => (
-                        <span
-                          key={i}
-                          className={`checkin-heaviness-label ${answers.heaviness === i + 1 ? 'checkin-heaviness-label--active' : ''}`}
-                        >
-                          {l}
-                        </span>
-                      ))}
+                  )}
+
+                  {/* 5. Safety Question (Q9) */}
+                  {currentQ.type === 'safety' && currentQ.options && (
+                    <div className="checkin-safety-list">
+                      {currentQ.options.map(opt => {
+                        const isSelected = answers.safety === opt.id
+                        return (
+                          <button
+                            key={opt.id}
+                            className={`checkin-safety-card ${isSelected ? 'checkin-safety-card--selected' : ''}`}
+                            onClick={() => handleSelectSingle('safety', opt.id)}
+                          >
+                            <span className="checkin-safety-label">{opt.label}</span>
+                          </button>
+                        )
+                      })}
                     </div>
-                    <div className="checkin-heaviness-badge font-display">
-                      Level {answers.heaviness} of 5 — {currentQ.sliderLabels?.[answers.heaviness - 1]}
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* 5. Safety Question (Q9) */}
-                {currentQ.type === 'safety' && currentQ.options && (
-                  <div className="checkin-safety-list">
-                    {currentQ.options.map(opt => {
-                      const isSelected = answers.safety === opt.id
-                      return (
-                        <button
-                          key={opt.id}
-                          className={`checkin-safety-card ${isSelected ? 'checkin-safety-card--selected' : ''} ${opt.id === 'yes' ? 'checkin-safety-card--yes' : ''}`}
-                          onClick={() => handleSelectSingle('safety', opt.id)}
-                        >
-                          <span className="checkin-safety-label">{opt.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+                </div>
 
-              </div>
+                {/* Bottom Navigation Control Bar */}
+                <div className="checkin-bottom-controls">
+                  <motion.button
+                    className="btn btn-primary checkin-continue-btn"
+                    onClick={handleNext}
+                    disabled={!canProceed()}
+                    whileHover={canProceed() ? { scale: 1.02 } : {}}
+                    whileTap={canProceed() ? { scale: 0.98 } : {}}
+                  >
+                    <span>{currentQ.id === totalQuestions ? 'Complete Check-In' : 'Next Question'}</span>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M3.75 9H14.25M10.5 5.25L14.25 9L10.5 12.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </motion.button>
+                </div>
 
-              {/* Bottom Actions Bar */}
-              <div className="checkin-actions-bar">
-                <motion.button
-                  className="btn btn-primary checkin-next-btn"
-                  onClick={handleNext}
-                  disabled={!canProceed()}
-                  whileHover={canProceed() ? { scale: 1.02 } : {}}
-                  whileTap={canProceed() ? { scale: 0.98 } : {}}
-                >
-                  <span>{currentQ.id === totalQuestions ? 'Complete Check-In' : 'Next Question'}</span>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M3.75 9H14.25M10.5 5.25L14.25 9L10.5 12.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </motion.button>
-              </div>
-
-            </motion.div>
-          </AnimatePresence>
-        </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </section>
 
       </div>
     </div>
