@@ -16,12 +16,12 @@ function monoMaterial(colorHex: string, roughness = 0.4, metalness = 0.1) {
    DYNAMIC GLB MODEL LOADER
    Loads `/models/${id}.glb` or `/models/${id}_3d_model.glb`,
    auto-centers, normalizes scale, and plays animations if embedded.
+   Renders procedural model immediately while loading so canvas is never blank.
    ════════════════════════════════════════ */
 export function GLBModel({
   id,
   hovered = false,
   selected = false,
-  onLoadFailed,
 }: {
   id: string
   hovered?: boolean
@@ -45,7 +45,6 @@ export function GLBModel({
 
     function attemptLoad() {
       if (currentUrlIndex >= possibleUrls.length) {
-        if (isMounted && onLoadFailed) onLoadFailed()
         return
       }
 
@@ -78,11 +77,14 @@ export function GLBModel({
               mesh.castShadow = true
               mesh.receiveShadow = true
               if (mesh.material) {
-                if (Array.isArray(mesh.material)) {
-                  mesh.material.forEach(m => { m.needsUpdate = true })
-                } else {
-                  mesh.material.needsUpdate = true
-                }
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+                mats.forEach((m: any) => {
+                  m.needsUpdate = true
+                  // Ensure materials are bright enough in B&W theme
+                  if (m.color && m.color.r < 0.08 && m.color.g < 0.08 && m.color.b < 0.08) {
+                    m.color.setRGB(0.28, 0.28, 0.28)
+                  }
+                })
               }
             }
           })
@@ -114,7 +116,7 @@ export function GLBModel({
         mixerRef.current.stopAllAction()
       }
     }
-  }, [id, onLoadFailed])
+  }, [id])
 
   useFrame((_, delta) => {
     if (mixerRef.current) {
@@ -129,14 +131,18 @@ export function GLBModel({
     group.current.rotation.y += delta * (selected ? 1.4 : 0.3)
   })
 
-  if (!gltfScene) return null
+  // If GLB is loaded, show GLB model
+  if (gltfScene) {
+    return (
+      <group ref={group}>
+        <primitive object={gltfScene} />
+        {selected && <pointLight color="#FFFFFF" intensity={2.5} distance={4} />}
+      </group>
+    )
+  }
 
-  return (
-    <group ref={group}>
-      <primitive object={gltfScene} />
-      {selected && <pointLight color="#FFFFFF" intensity={2.5} distance={4} />}
-    </group>
-  )
+  // Fallback while loading or if GLB not found: display procedural model immediately
+  return <ProceduralCharacterModel id={id} hovered={hovered} selected={selected} />
 }
 
 /* ════════════════════════════════════════
@@ -535,6 +541,29 @@ export function PenguinModel({ hovered, selected }: { hovered?: boolean; selecte
 }
 
 /* ════════════════════════════════════════
+   PROCEDURAL CHARACTER MODEL SWITCHER
+   ════════════════════════════════════════ */
+export function ProceduralCharacterModel({
+  id,
+  hovered = false,
+  selected = false,
+}: {
+  id: string
+  hovered?: boolean
+  selected?: boolean
+}) {
+  switch (id) {
+    case 'owl':      return <OwlModel hovered={hovered} selected={selected} />
+    case 'deer':     return <DeerModel hovered={hovered} selected={selected} />
+    case 'panda':    return <PandaModel hovered={hovered} selected={selected} />
+    case 'rabbit':   return <RabbitModel hovered={hovered} selected={selected} />
+    case 'capybara': return <CapybaraModel hovered={hovered} selected={selected} />
+    case 'penguin':  return <PenguinModel hovered={hovered} selected={selected} />
+    default:         return <OwlModel hovered={hovered} selected={selected} />
+  }
+}
+
+/* ════════════════════════════════════════
    UNIVERSAL CHARACTER RENDERER
    ════════════════════════════════════════ */
 export function CharacterModelRenderer({
@@ -546,27 +575,12 @@ export function CharacterModelRenderer({
   hovered?: boolean
   selected?: boolean
 }) {
-  const [glbFailed, setGlbFailed] = useState(false)
-
-  if (!glbFailed) {
-    return (
-      <GLBModel
-        id={id}
-        hovered={hovered}
-        selected={selected}
-        onLoadFailed={() => setGlbFailed(true)}
-      />
-    )
-  }
-
-  // Fallback to geometric models if GLB cannot load
-  switch (id) {
-    case 'owl':      return <OwlModel hovered={hovered} selected={selected} />
-    case 'deer':     return <DeerModel hovered={hovered} selected={selected} />
-    case 'panda':    return <PandaModel hovered={hovered} selected={selected} />
-    case 'rabbit':   return <RabbitModel hovered={hovered} selected={selected} />
-    case 'capybara': return <CapybaraModel hovered={hovered} selected={selected} />
-    case 'penguin':  return <PenguinModel hovered={hovered} selected={selected} />
-    default:         return <OwlModel hovered={hovered} selected={selected} />
-  }
+  return (
+    <GLBModel
+      key={id}
+      id={id}
+      hovered={hovered}
+      selected={selected}
+    />
+  )
 }

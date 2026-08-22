@@ -285,10 +285,11 @@ export default function CheckIn() {
                 gl={{ antialias: true, alpha: true }}
                 dpr={[1, 2]}
               >
-                <ambientLight intensity={0.9} />
-                <directionalLight position={[3, 5, 3]} intensity={1.8} color="#FFFFFF" />
-                <directionalLight position={[-3, -2, -2]} intensity={0.5} color="#A3A3A3" />
-                <pointLight position={[0, 2, 2]} intensity={1.0} color="#FFFFFF" />
+                <ambientLight intensity={1.4} />
+                <directionalLight position={[3, 5, 3]} intensity={2.2} color="#FFFFFF" />
+                <directionalLight position={[-3, -2, -2]} intensity={1.0} color="#FFFFFF" />
+                <pointLight position={[0, 2, 2]} intensity={1.5} color="#FFFFFF" />
+                <hemisphereLight args={['#FFFFFF', '#333333', 1.0]} />
                 <Suspense fallback={null}>
                   <CharacterModelRenderer id={character.id} hovered selected />
                 </Suspense>

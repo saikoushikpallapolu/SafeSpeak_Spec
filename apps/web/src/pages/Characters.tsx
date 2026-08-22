@@ -176,10 +176,11 @@ export default function Characters() {
                 gl={{ antialias: true, alpha: true }}
                 dpr={[1, 2]}
               >
-                <ambientLight intensity={0.9} />
-                <directionalLight position={[4, 6, 4]} intensity={1.8} color="#FFFFFF" />
-                <directionalLight position={[-4, -2, -3]} intensity={0.6} color="#A3A3A3" />
-                <pointLight position={[0, 2, 2]} intensity={1.2} color="#FFFFFF" />
+                <ambientLight intensity={1.4} />
+                <directionalLight position={[4, 6, 4]} intensity={2.2} color="#FFFFFF" />
+                <directionalLight position={[-4, -2, -3]} intensity={1.0} color="#FFFFFF" />
+                <pointLight position={[0, 2, 2]} intensity={1.5} color="#FFFFFF" />
+                <hemisphereLight args={['#FFFFFF', '#333333', 1.0]} />
                 <Suspense fallback={null}>
                   <CharacterModelRenderer id={currentChar.id} hovered selected />
                 </Suspense>
