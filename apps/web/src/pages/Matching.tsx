@@ -15,7 +15,7 @@ export default function Matching() {
   const character = getCharacterById(charId)
   const hasJoinedRef = useRef(false)
 
-  const { joinQueue, leaveQueue } = useMatching((payload) => {
+  const { joinQueue, leaveQueue, socketConnected } = useMatching((payload) => {
     console.log('[SafeSpeak Frontend] Match found! Navigating to /match-found with payload:', payload)
     navigate('/match-found')
   })
@@ -24,8 +24,10 @@ export default function Matching() {
     if (!hasJoinedRef.current) {
       hasJoinedRef.current = true
       const rawAnswers = sessionStorage.getItem('checkin_answers')
-      const checkin = rawAnswers ? JSON.parse(rawAnswers) : { topics: ['exam'], heaviness: 3, languages: ['English'] }
-      console.log('[SafeSpeak Frontend] Joining matching queue for:', charId)
+      const checkin = rawAnswers
+        ? JSON.parse(rawAnswers)
+        : { topics: ['exam'], heaviness: 3, languages: ['English'] }
+      console.log('[SafeSpeak Frontend] Calling joinQueue for:', charId)
       joinQueue(charId, checkin)
     }
   }, [charId, joinQueue])
@@ -70,6 +72,27 @@ export default function Matching() {
       >
         <h1 className="matching-copy__title">Looking for someone<br />carrying something similar…</h1>
         <p className="matching-copy__sub">Connecting with an anonymous peer in real-time.</p>
+
+        {/* Live connection status badge */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginTop: '12px',
+          fontSize: '12px',
+          color: socketConnected ? '#4ade80' : '#facc15',
+          background: 'rgba(255,255,255,0.07)',
+          borderRadius: '20px',
+          padding: '4px 12px',
+        }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: socketConnected ? '#4ade80' : '#facc15',
+            boxShadow: socketConnected ? '0 0 6px #4ade80' : '0 0 6px #facc15',
+            display: 'inline-block'
+          }} />
+          {socketConnected ? 'Connected to server — searching for a peer…' : 'Connecting to server…'}
+        </div>
       </motion.div>
 
       {/* Pulsing dots */}

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getSocket } from '../services/socket'
+import { getSocket, whenConnected } from '../services/socket'
 import type { CharacterId, ChatMessage, CheckInAnswers, MatchFoundPayload, ReflectionSummary, ThemedRoomId } from '@safespeak/shared-types'
 
 // Hook for 1:1 Matching Queue
 export function useMatching(onMatchFound?: (payload: MatchFoundPayload) => void) {
   const [isSearching, setIsSearching] = useState(false)
   const [matchData, setMatchData] = useState<MatchFoundPayload | null>(null)
+  const [socketConnected, setSocketConnected] = useState(false)
   const socket = getSocket()
   const onMatchFoundRef = useRef(onMatchFound)
 
@@ -13,9 +14,22 @@ export function useMatching(onMatchFound?: (payload: MatchFoundPayload) => void)
     onMatchFoundRef.current = onMatchFound
   }, [onMatchFound])
 
+  // Track connection status
+  useEffect(() => {
+    if ((socket as any).connected) setSocketConnected(true)
+    const onConnect = () => { console.log('[SafeSpeak Frontend] ✅ Socket connected!'); setSocketConnected(true) }
+    const onDisconnect = () => { console.warn('[SafeSpeak Frontend] Socket disconnected'); setSocketConnected(false) }
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+    return () => {
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+    }
+  }, [socket])
+
   useEffect(() => {
     const handleMatchFound = (payload: MatchFoundPayload) => {
-      console.log('[SafeSpeak Frontend] Received match_found payload:', payload)
+      console.log('[SafeSpeak Frontend] 🎉 Received match_found payload:', payload)
       setIsSearching(false)
       setMatchData(payload)
       sessionStorage.setItem('current_match', JSON.stringify(payload))
@@ -35,21 +49,26 @@ export function useMatching(onMatchFound?: (payload: MatchFoundPayload) => void)
     setIsSearching(true)
     sessionStorage.removeItem('current_match')
     const charTag = `${characterId.charAt(0).toUpperCase() + characterId.slice(1)}#${Math.floor(1000 + Math.random() * 9000)}`
-    console.log('[SafeSpeak Frontend] Emitting join_queue for character:', characterId)
-    socket.emit('join_queue', {
+    const payload = {
       characterId,
       characterTag: charTag,
       checkin,
       preferredLanguages: checkin.languages || ['English'],
+    }
+    console.log('[SafeSpeak Frontend] Waiting for socket connection before join_queue...')
+    // Use whenConnected to guarantee the emit only fires after the backend ACKs the connection
+    whenConnected((s) => {
+      console.log('[SafeSpeak Frontend] ✅ Socket ready — emitting join_queue for:', characterId, 'socket id:', (s as any).id)
+      s.emit('join_queue', payload)
     })
-  }, [socket])
+  }, [])
 
   const leaveQueue = useCallback(() => {
     setIsSearching(false)
-    socket.emit('leave_queue')
-  }, [socket])
+    getSocket().emit('leave_queue')
+  }, [])
 
-  return { isSearching, matchData, joinQueue, leaveQueue }
+  return { isSearching, matchData, socketConnected, joinQueue, leaveQueue }
 }
 
 // Hook for Live 1:1 Chat
