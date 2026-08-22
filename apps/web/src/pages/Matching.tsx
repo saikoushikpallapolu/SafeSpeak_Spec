@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
@@ -6,46 +6,48 @@ import { Suspense } from 'react'
 import { getCharacterById } from '../data/characters'
 import { CharacterModelRenderer } from '../components/characters/CharacterModels'
 import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
-import { joinFirestoreQueue, leaveFirestoreQueue } from '../services/firestoreMatching'
+import { joinFirestoreQueue, leaveFirestoreQueue, triggerInstantAiMatch } from '../services/firestoreMatching'
 import './Matching.css'
 
 export default function Matching() {
   const navigate = useNavigate()
   const charId = (sessionStorage.getItem('character') || 'owl') as CharacterId
   const character = getCharacterById(charId)
-  const [status, setStatus] = useState('Connecting to SafeSpeak Cloud…')
+  const [secondsWaiting, setSecondsWaiting] = useState(0)
 
   useEffect(() => {
-    let cancelled = false
+    let isCancelled = false
 
     const rawAnswers = sessionStorage.getItem('checkin_answers')
     const checkin = rawAnswers
       ? JSON.parse(rawAnswers)
       : { topics: ['exam'], heaviness: 3, languages: ['English'] }
 
-    setStatus('Connected — searching for a peer…')
+    console.log('[SafeSpeak] Enqueuing character for live match:', charId)
 
     joinFirestoreQueue(charId, checkin, (payload: MatchFoundPayload) => {
-      if (cancelled) return
+      if (isCancelled) return
       console.log('[SafeSpeak] Match found!', payload)
       navigate('/match-found')
     })
 
+    const timer = setInterval(() => {
+      setSecondsWaiting(prev => prev + 1)
+    }, 1000)
+
     return () => {
-      cancelled = true
-      // Do NOT call leaveFirestoreQueue() here!
-      // React StrictMode will unmount+remount, and calling leave here
-      // would delete the queue doc before the remount can re-join.
-      // The queue doc is cleaned up by:
-      // 1. firestoreMatching.ts on match (deleteDoc in completeMatch)
-      // 2. handleSkipToRooms below
-      // 3. Stale doc purge on next join
+      isCancelled = true
+      clearInterval(timer)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSkipToRooms = () => {
     leaveFirestoreQueue()
     navigate('/rooms')
+  }
+
+  const handleInstantAi = () => {
+    triggerInstantAiMatch()
   }
 
   return (
@@ -84,24 +86,26 @@ export default function Matching() {
         <h1 className="matching-copy__title">Looking for someone<br />carrying something similar…</h1>
         <p className="matching-copy__sub">Connecting with an anonymous peer in real-time.</p>
 
+        {/* Status indicator */}
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '8px',
           marginTop: '12px',
-          fontSize: '12px',
+          fontSize: '13px',
           color: '#4ade80',
-          background: 'rgba(255,255,255,0.07)',
+          background: 'rgba(255,255,255,0.08)',
           borderRadius: '20px',
-          padding: '4px 12px',
+          padding: '6px 14px',
+          backdropFilter: 'blur(8px)',
         }}>
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
             background: '#4ade80',
-            boxShadow: '0 0 6px #4ade80',
+            boxShadow: '0 0 8px #4ade80',
             display: 'inline-block'
           }} />
-          {status}
+          <span>Searching for a real peer ({secondsWaiting}s)...</span>
         </div>
       </motion.div>
 
@@ -112,16 +116,29 @@ export default function Matching() {
         ))}
       </div>
 
-      {/* Skip to rooms */}
-      <motion.button
-        className="btn btn-ghost matching-skip"
-        onClick={handleSkipToRooms}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-      >
-        Browse themed rooms instead
-      </motion.button>
+      {/* Action buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', marginTop: '16px' }}>
+        <motion.button
+          className="btn btn-ghost"
+          onClick={handleInstantAi}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+          style={{ fontSize: '13px', color: '#cbd5e1', padding: '6px 16px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}
+        >
+          🤖 Don't want to wait? Talk with SafeSpeak AI Guide
+        </motion.button>
+
+        <motion.button
+          className="btn btn-ghost matching-skip"
+          onClick={handleSkipToRooms}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+        >
+          Browse themed rooms instead
+        </motion.button>
+      </div>
     </div>
   )
 }

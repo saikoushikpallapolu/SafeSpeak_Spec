@@ -14,8 +14,8 @@ import { db } from './firebase'
 import type { CharacterId, CheckInAnswers, MatchFoundPayload } from '@safespeak/shared-types'
 import { getSimulatedPeerPersona } from './safetyAndTranslation'
 
-const STALE_THRESHOLD_MS = 60_000
-const FALLBACK_TIMEOUT_MS = 22_000
+const STALE_THRESHOLD_MS = 120_000 // 2 minutes
+const FALLBACK_TIMEOUT_MS = 60_000 // 60 seconds of waiting for real peer
 
 export function getOrCreateUserId(): string {
   let id = sessionStorage.getItem('safespeak_user_id')
@@ -46,11 +46,19 @@ let _unsubMyDoc: Unsubscribe | null = null
 let _unsubQueue: Unsubscribe | null = null
 let _fallbackTimer: ReturnType<typeof setTimeout> | null = null
 let _activeSessionToken: string | null = null
+let _triggerAiFallbackFn: (() => void) | null = null
 
 function cleanupListeners() {
   if (_unsubMyDoc) { _unsubMyDoc(); _unsubMyDoc = null }
   if (_unsubQueue) { _unsubQueue(); _unsubQueue = null }
   if (_fallbackTimer) { clearTimeout(_fallbackTimer); _fallbackTimer = null }
+  _triggerAiFallbackFn = null
+}
+
+export function triggerInstantAiMatch() {
+  if (_triggerAiFallbackFn) {
+    _triggerAiFallbackFn()
+  }
 }
 
 export async function joinFirestoreQueue(
@@ -82,6 +90,60 @@ export async function joinFirestoreQueue(
     console.log(`[SafeSpeak Firestore] 🎯 Match confirmed! Room: ${payload.roomId} (Simulated: ${payload.isSimulatedPeer})`)
     onMatch(payload)
   }
+
+  // AI fallback generator
+  const performAiFallback = async () => {
+    if (isMatched || _activeSessionToken !== sessionToken) return
+    console.log('[SafeSpeak Firestore] 🤖 Connecting to SafeSpeak AI peer...')
+
+    const candidates: CharacterId[] = ['owl', 'deer', 'penguin', 'panda', 'rabbit', 'bear']
+    const peerChar = candidates.filter(c => c !== characterId)[Math.floor(Math.random() * 5)]
+    const persona = getSimulatedPeerPersona(peerChar)
+    const peerTag = `${persona.name}#${Math.floor(1000 + Math.random() * 9000)}`
+    const roomId = `room_sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    const sharedContext = deriveSoloContext(checkin)
+    const icebreaker = generateIcebreaker(sharedContext)
+
+    const simPayload: MatchFoundPayload = {
+      roomId,
+      peerSocketId: `sim_${Date.now()}`,
+      peerCharacter: peerChar,
+      peerTag,
+      peerLanguage: myLanguages[0] || 'English',
+      myCharacter: characterId,
+      myTag: charTag,
+      myLanguage: myLanguages[0] || 'English',
+      sharedContext,
+      icebreaker,
+      isSimulatedPeer: true,
+    }
+
+    try {
+      await setDoc(doc(db, 'chat_rooms', roomId), {
+        roomId,
+        status: 'active',
+        isSimulated: true,
+        createdAt: Date.now(),
+        users: [
+          { userId, character: characterId, tag: charTag, language: myLanguages[0] || 'English' },
+          { userId: 'sim_peer', character: peerChar, tag: peerTag, language: myLanguages[0] || 'English' },
+        ],
+        sharedContext,
+        icebreaker,
+        simulatedContext: {
+          characterId: peerChar,
+          characterTag: peerTag,
+          sharedTopic: sharedContext,
+          messageHistory: [],
+        },
+        typing: {},
+      })
+    } catch (_) {}
+
+    completeMatch(simPayload)
+  }
+
+  _triggerAiFallbackFn = performAiFallback
 
   // Purge any stale leftover queue docs first
   await purgeStaleQueueDocs()
@@ -205,57 +267,8 @@ export async function joinFirestoreQueue(
     }
   })
 
-  // 4. Fallback to AI persona if no peer joins within timeout
-  _fallbackTimer = setTimeout(async () => {
-    if (isMatched || _activeSessionToken !== sessionToken) return
-    console.log(`[SafeSpeak Firestore] ⏱️ Timeout (${FALLBACK_TIMEOUT_MS / 1000}s) reached without real peer. Connecting to AI persona...`)
-
-    const candidates: CharacterId[] = ['owl', 'deer', 'penguin', 'panda', 'rabbit', 'bear']
-    const peerChar = candidates.filter(c => c !== characterId)[Math.floor(Math.random() * 5)]
-    const persona = getSimulatedPeerPersona(peerChar)
-    const peerTag = `${persona.name}#${Math.floor(1000 + Math.random() * 9000)}`
-    const roomId = `room_sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-    const sharedContext = deriveSoloContext(checkin)
-    const icebreaker = generateIcebreaker(sharedContext)
-
-    const simPayload: MatchFoundPayload = {
-      roomId,
-      peerSocketId: `sim_${Date.now()}`,
-      peerCharacter: peerChar,
-      peerTag,
-      peerLanguage: myLanguages[0] || 'English',
-      myCharacter: characterId,
-      myTag: charTag,
-      myLanguage: myLanguages[0] || 'English',
-      sharedContext,
-      icebreaker,
-      isSimulatedPeer: true,
-    }
-
-    try {
-      await setDoc(doc(db, 'chat_rooms', roomId), {
-        roomId,
-        status: 'active',
-        isSimulated: true,
-        createdAt: Date.now(),
-        users: [
-          { userId, character: characterId, tag: charTag, language: myLanguages[0] || 'English' },
-          { userId: 'sim_peer', character: peerChar, tag: peerTag, language: myLanguages[0] || 'English' },
-        ],
-        sharedContext,
-        icebreaker,
-        simulatedContext: {
-          characterId: peerChar,
-          characterTag: peerTag,
-          sharedTopic: sharedContext,
-          messageHistory: [],
-        },
-        typing: {},
-      })
-    } catch (_) {}
-
-    completeMatch(simPayload)
-  }, FALLBACK_TIMEOUT_MS)
+  // 4. Fallback to AI persona after 60s if no real peer joins
+  _fallbackTimer = setTimeout(performAiFallback, FALLBACK_TIMEOUT_MS)
 }
 
 export async function leaveFirestoreQueue(): Promise<void> {
