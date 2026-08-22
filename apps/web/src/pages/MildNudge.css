@@ -1,26 +1,30 @@
+/* ============================================================
+   SafeSpeak — Mild Nudge (Black & White Theme)
+   ============================================================ */
+
 .nudge-page {
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10,15,10,0.97);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(16px);
   padding: var(--space-6);
 }
 
 .nudge-card {
-  background: var(--color-bg-mid);
-  border: 1px solid rgba(212,135,90,0.35);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-bright);
   border-radius: var(--radius-2xl);
   padding: var(--space-10) var(--space-8);
-  max-width: 400px;
+  max-width: 440px;
   width: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-5);
-  box-shadow: 0 0 60px rgba(212,135,90,0.1), var(--shadow-lg);
+  box-shadow: 0 0 60px rgba(255, 255, 255, 0.08), var(--shadow-lg);
 }
 
 .nudge-icon {
@@ -30,7 +34,7 @@
 
 .nudge-title {
   font-size: var(--text-2xl);
-  color: var(--color-accent-amber);
+  color: #FFFFFF;
   font-weight: 400;
 }
 
@@ -50,10 +54,10 @@
 }
 
 .nudge-breath-circle {
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
-  border: 2px solid rgba(212,135,90,0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,10 +65,11 @@
 }
 
 .nudge-breath-inner {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(212,135,90,0.6), rgba(212,135,90,0.2));
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.15));
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
   animation: breathe 5s ease-in-out infinite;
 }
 

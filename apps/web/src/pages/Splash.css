@@ -1,3 +1,7 @@
+/* ============================================================
+   SafeSpeak — Splash (Black & White Theme)
+   ============================================================ */
+
 .splash {
   position: relative;
   min-height: 100dvh;
@@ -6,54 +10,35 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: radial-gradient(ellipse at 30% 60%, #1F3020 0%, #1A2419 55%, #111A10 100%);
+  background: radial-gradient(ellipse at 50% 40%, #141414 0%, #080808 60%, #000000 100%);
 }
 
-/* Fireflies */
-.splash__fireflies {
+.splash__stars {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 1;
 }
 
-.firefly {
+.splash-star {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, #C9A84C, #7BAE7F88);
-  box-shadow: 0 0 6px 2px rgba(201,168,76,0.5);
-  animation: firefly-drift var(--dur-breath, 5s) ease-in-out infinite;
+  background: #FFFFFF;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: star-twinkle var(--dur-breath, 4s) ease-in-out infinite;
 }
 
-@keyframes firefly-drift {
-  0%   { opacity: 0; transform: translateY(0) scale(0.3); }
-  15%  { opacity: 0.9; transform: translateY(-12px) scale(1); }
-  70%  { opacity: 0.6; transform: translateY(-40px) scale(0.8) translateX(8px); }
-  100% { opacity: 0; transform: translateY(-70px) scale(0.2) translateX(-4px); }
-}
-
-/* Forest silhouette */
-.splash__forest {
+.splash__horizon {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 35%;
-  background:
-    radial-gradient(ellipse 14% 100% at 8% 100%, #0D1A0C 50%, transparent 51%),
-    radial-gradient(ellipse 10% 90% at 18% 100%, #0F1E0E 50%, transparent 51%),
-    radial-gradient(ellipse 12% 110% at 28% 100%, #0D1A0C 50%, transparent 51%),
-    radial-gradient(ellipse 8% 80% at 38% 100%, #111E10 50%, transparent 51%),
-    radial-gradient(ellipse 14% 120% at 50% 100%, #0D1A0C 50%, transparent 51%),
-    radial-gradient(ellipse 10% 85% at 62% 100%, #0F1E0E 50%, transparent 51%),
-    radial-gradient(ellipse 13% 100% at 72% 100%, #0D1A0C 50%, transparent 51%),
-    radial-gradient(ellipse 9% 90% at 82% 100%, #111E10 50%, transparent 51%),
-    radial-gradient(ellipse 12% 105% at 92% 100%, #0D1A0C 50%, transparent 51%);
+  height: 25%;
+  background: linear-gradient(to top, #000000 30%, transparent 100%);
   pointer-events: none;
   z-index: 2;
 }
 
-/* Center content */
 .splash__center {
   position: relative;
   z-index: 10;
@@ -63,25 +48,26 @@
   text-align: center;
   gap: var(--space-5);
   padding: var(--space-8) var(--space-6);
-  max-width: 420px;
+  max-width: 480px;
 }
 
 .splash__logo-mark {
-  animation: float 4s ease-in-out infinite;
+  animation: float 4.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.2));
 }
 
 .splash__title {
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 8vw, 4.5rem);
+  font-size: clamp(3rem, 9vw, 4.8rem);
   font-weight: 400;
-  letter-spacing: -0.03em;
-  color: var(--color-text-primary);
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
   line-height: 1;
 }
 
 .splash__tagline {
-  font-size: var(--text-lg);
-  color: var(--color-text-muted);
+  font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+  color: var(--color-text-secondary);
   font-style: italic;
   font-family: var(--font-display);
   font-weight: 300;
@@ -99,28 +85,31 @@
   padding: var(--space-1) var(--space-4);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
-  font-family: var(--font-mono);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: rgba(123,174,127,0.1);
-  border: 1px solid rgba(123,174,127,0.25);
-  color: var(--color-accent-sage);
+  background: #141414;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
 }
 
 .splash__cta {
-  font-size: var(--text-lg);
-  padding: var(--space-4) var(--space-10);
+  font-size: var(--text-base);
+  font-weight: 600;
+  padding: var(--space-4) var(--space-8);
   margin-top: var(--space-2);
-  letter-spacing: 0.01em;
+  box-shadow: 0 4px 24px rgba(255, 255, 255, 0.25);
+  gap: var(--space-3);
 }
 
 .splash__resources {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--color-text-dim);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .splash__resources:hover {
-  color: var(--color-text-muted);
+  color: #FFFFFF;
 }
 
 .splash__privacy {
@@ -129,6 +118,5 @@
   font-size: var(--text-xs);
   color: var(--color-text-dim);
   z-index: 10;
-  font-family: var(--font-mono);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }

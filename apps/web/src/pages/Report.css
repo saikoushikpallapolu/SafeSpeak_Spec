@@ -1,3 +1,7 @@
+/* ============================================================
+   SafeSpeak — Report Bottom Sheet (Black & White Theme)
+   ============================================================ */
+
 .report-page {
   position: fixed;
   inset: 0;
@@ -9,16 +13,18 @@
 .report-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10,15,10,0.75);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
 }
 
 .report-sheet {
   position: relative;
   z-index: 61;
   width: 100%;
-  background: var(--color-bg-mid);
-  border-top: 1px solid var(--color-border);
+  max-width: 600px;
+  margin: 0 auto;
+  background: var(--color-bg-card);
+  border-top: 1px solid var(--color-border-bright);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--space-6) var(--space-6) max(var(--space-8), env(safe-area-inset-bottom));
   display: flex;
@@ -26,31 +32,31 @@
   gap: var(--space-5);
   max-height: 80dvh;
   overflow-y: auto;
+  box-shadow: var(--shadow-lg);
 }
 
 .report-handle {
-  width: 36px;
+  width: 40px;
   height: 4px;
   border-radius: var(--radius-full);
-  background: var(--color-border);
+  background: var(--color-border-bright);
   margin: 0 auto calc(-1 * var(--space-2));
 }
 
 .report-title {
   font-size: var(--text-xl);
   font-family: var(--font-display);
-  color: var(--color-text-primary);
+  color: #FFFFFF;
 }
 
 .report-preview {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border-dim);
+  background: #141414;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-style: italic;
-  opacity: 0.7;
 }
 
 .report-reasons {
@@ -63,20 +69,25 @@
   text-align: left;
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-border);
-  background: var(--color-bg-card);
-  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  background: #141414;
+  color: var(--color-text-secondary);
   font-family: var(--font-body);
   font-size: var(--text-base);
   cursor: pointer;
   transition: all var(--dur-base);
 }
 
-.report-reason:hover { border-color: var(--color-accent-rose); color: var(--color-text-primary); }
+.report-reason:hover {
+  border-color: var(--color-border-bright);
+  color: #FFFFFF;
+}
+
 .report-reason--active {
-  border-color: var(--color-accent-rose);
-  background: rgba(196,123,123,0.1);
-  color: var(--color-accent-rose);
+  border-color: #FFFFFF;
+  background: #FFFFFF;
+  color: #000000 !important;
+  font-weight: 600;
 }
 
 .report-actions {

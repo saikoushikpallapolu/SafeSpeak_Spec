@@ -1,11 +1,15 @@
+/* ============================================================
+   SafeSpeak — Match Found (Black & White Theme)
+   ============================================================ */
+
 .matchfound-page {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 40%, #213522 0%, #1A2419 55%, #111A10 100%);
-  gap: var(--space-8);
+  background: radial-gradient(ellipse at 50% 40%, #171717 0%, #080808 60%, #000000 100%);
+  gap: var(--space-6);
   padding: var(--space-8) var(--space-6);
   position: relative;
   overflow: hidden;
@@ -16,17 +20,17 @@
   top: 35%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 300px;
-  height: 300px;
+  width: 340px;
+  height: 340px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201,168,76,0.18) 0%, rgba(123,174,127,0.1) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 70%);
   pointer-events: none;
-  animation: pulse-burst 2s ease-in-out infinite;
+  animation: pulse-burst 2.5s ease-in-out infinite;
 }
 
 @keyframes pulse-burst {
   0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
-  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
 }
 
 .matchfound-chars {
@@ -41,15 +45,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  width: 140px;
-  height: 160px;
+  gap: var(--space-2);
+  width: 150px;
+  height: 180px;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 520px) {
   .matchfound-char {
-    width: 180px;
-    height: 200px;
+    width: 200px;
+    height: 220px;
   }
 }
 
@@ -61,15 +65,24 @@
 .matchfound-char__label {
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
 .matchfound-heart {
   font-size: 2rem;
-  animation: float 2s ease-in-out infinite;
+  animation: float 2.5s ease-in-out infinite;
   z-index: 10;
   flex-shrink: 0;
+  background: #1C1C1C;
+  border: 1px solid var(--color-border);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
 }
 
 .matchfound-context {
@@ -81,14 +94,14 @@
 .matchfound-context__you-both {
   font-size: var(--text-base);
   color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
   font-style: italic;
   font-family: var(--font-display);
 }
 
 .matchfound-context__topic {
-  font-size: clamp(1.8rem, 5vw, 2.5rem);
-  color: var(--color-accent-gold);
+  font-size: clamp(2rem, 5.5vw, 2.8rem);
+  color: #FFFFFF;
   font-weight: 400;
   letter-spacing: -0.02em;
 }
@@ -96,18 +109,18 @@
 .matchfound-icebreaker {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-5) var(--space-6);
-  max-width: 360px;
+  max-width: 420px;
   text-align: center;
   position: relative;
   z-index: 5;
+  box-shadow: var(--shadow-sm);
 }
 
 .matchfound-icebreaker__label {
   font-size: var(--text-xs);
   color: var(--color-text-dim);
-  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: var(--space-2);
@@ -116,15 +129,17 @@
 .matchfound-icebreaker__text {
   font-family: var(--font-display);
   font-style: italic;
-  color: var(--color-text-primary);
+  color: #FFFFFF;
   font-size: var(--text-base);
   line-height: 1.5;
 }
 
 .matchfound-cta {
   font-size: var(--text-base);
+  font-weight: 600;
   padding: var(--space-4) var(--space-10);
   position: relative;
   z-index: 5;
   gap: var(--space-3);
+  box-shadow: 0 4px 24px rgba(255, 255, 255, 0.25);
 }

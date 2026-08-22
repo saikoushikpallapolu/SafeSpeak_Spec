@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import type { CharacterData } from '../../data/characters'
-import { OwlModel, DeerModel, PandaModel, RabbitModel, CapybaraModel, AxolotlModel } from './CharacterModels'
+import { CharacterModelRenderer } from './CharacterModels'
 import './CharacterCard.css'
 
 interface Props {
@@ -11,18 +11,6 @@ interface Props {
   onSelect: () => void
   onHover: (v: boolean) => void
   compact?: boolean
-}
-
-function ModelComponent({ id, hovered, selected }: { id: string; hovered: boolean; selected: boolean }) {
-  switch (id) {
-    case 'owl':      return <OwlModel hovered={hovered} selected={selected} />
-    case 'deer':     return <DeerModel hovered={hovered} selected={selected} />
-    case 'panda':    return <PandaModel hovered={hovered} selected={selected} />
-    case 'rabbit':   return <RabbitModel hovered={hovered} selected={selected} />
-    case 'capybara': return <CapybaraModel hovered={hovered} selected={selected} />
-    case 'axolotl':  return <AxolotlModel hovered={hovered} selected={selected} />
-    default: return null
-  }
 }
 
 export default function CharacterCard({ character, selected, hovered, onSelect, onHover, compact }: Props) {
@@ -52,7 +40,7 @@ export default function CharacterCard({ character, selected, hovered, onSelect, 
           <directionalLight position={[3, 5, 3]} intensity={1.2} color="#F0EDE6" />
           <directionalLight position={[-2, -1, -2]} intensity={0.3} color={character.accentColor} />
           <Suspense fallback={null}>
-            <ModelComponent id={character.id} hovered={hovered} selected={selected} />
+            <CharacterModelRenderer id={character.id} hovered={hovered} selected={selected} />
           </Suspense>
         </Canvas>
       </div>

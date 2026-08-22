@@ -1,54 +1,53 @@
-import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import './Splash.css'
 
-function Firefly({ style }: { style: React.CSSProperties }) {
-  return <div className="firefly" style={style} />
-}
-
 export default function Splash() {
   const navigate = useNavigate()
-  const fireflyCount = 28
+  const starCount = 36
 
-  const fireflies = Array.from({ length: fireflyCount }, (_, i) => ({
+  const stars = Array.from({ length: starCount }, (_, i) => ({
     left: `${Math.random() * 100}%`,
     top: `${Math.random() * 100}%`,
-    animationDelay: `${Math.random() * 8}s`,
-    animationDuration: `${4 + Math.random() * 6}s`,
-    width: `${3 + Math.random() * 4}px`,
-    height: `${3 + Math.random() * 4}px`,
-    opacity: 0.4 + Math.random() * 0.6,
+    animationDelay: `${Math.random() * 6}s`,
+    animationDuration: `${3 + Math.random() * 5}s`,
+    width: `${1.5 + Math.random() * 3}px`,
+    height: `${1.5 + Math.random() * 3}px`,
+    opacity: 0.3 + Math.random() * 0.7,
   }))
 
   return (
     <div className="splash">
-      {/* Firefly particles */}
-      <div className="splash__fireflies" aria-hidden>
-        {fireflies.map((f, i) => (
-          <Firefly key={i} style={f} />
+      {/* Monochromatic star field */}
+      <div className="splash__stars" aria-hidden>
+        {stars.map((s, i) => (
+          <div key={i} className="splash-star" style={s} />
         ))}
       </div>
 
-      {/* Forest silhouette */}
-      <div className="splash__forest" aria-hidden />
+      {/* Subtle geometric horizon overlay */}
+      <div className="splash__horizon" aria-hidden />
 
       {/* Center content */}
       <div className="splash__center">
-        {/* Logo mark */}
+        {/* Minimalist Logo Mark */}
         <motion.div
           className="splash__logo-mark"
-          initial={{ scale: 0.5, opacity: 0 }}
+          initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
         >
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden>
-            <circle cx="32" cy="32" r="30" fill="none" stroke="#7BAE7F" strokeWidth="1.5" opacity="0.4" />
-            <circle cx="32" cy="32" r="20" fill="none" stroke="#7BAE7F" strokeWidth="1.5" opacity="0.6" />
-            <circle cx="32" cy="32" r="8" fill="#C9A84C" opacity="0.9" />
-            {/* Leaf motif */}
-            <path d="M32 6 C32 6 48 18 48 32 C48 40 40 46 32 46 C24 46 16 40 16 32 C16 18 32 6 32 6Z"
-              fill="none" stroke="#7BAE7F" strokeWidth="1.5" opacity="0.5" />
+          <svg width="68" height="68" viewBox="0 0 68 68" fill="none" aria-hidden>
+            <circle cx="34" cy="34" r="32" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.3" strokeDasharray="3 3" />
+            <circle cx="34" cy="34" r="22" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.6" />
+            <circle cx="34" cy="34" r="8" fill="#FFFFFF" />
+            <path
+              d="M34 10 C34 10 48 20 48 34 C48 42 42 48 34 48 C26 48 20 42 20 34 C20 20 34 10 34 10Z"
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth="1.5"
+              opacity="0.8"
+            />
           </svg>
         </motion.div>
 
@@ -56,7 +55,7 @@ export default function Splash() {
           className="splash__title"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.7 }}
+          transition={{ delay: 0.25, duration: 0.7 }}
         >
           SafeSpeak
         </motion.h1>
@@ -65,7 +64,7 @@ export default function Splash() {
           className="splash__tagline"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55, duration: 0.6 }}
+          transition={{ delay: 0.45, duration: 0.6 }}
         >
           Talk. In your language. Without fear.
         </motion.p>
@@ -74,10 +73,10 @@ export default function Splash() {
           className="splash__pills"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.85, duration: 0.6 }}
+          transition={{ delay: 0.7, duration: 0.6 }}
         >
-          {['Anonymous', 'Multilingual', 'Safe'].map((label) => (
-            <span key={label} className="splash__pill">{label}</span>
+          {['100% Anonymous', 'Real-time Multilingual', 'Safe & Moderated'].map((label) => (
+            <span key={label} className="splash__pill font-mono">{label}</span>
           ))}
         </motion.div>
 
@@ -86,13 +85,13 @@ export default function Splash() {
           onClick={() => navigate('/characters')}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1, duration: 0.5 }}
+          transition={{ delay: 0.95, duration: 0.5 }}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
         >
-          Begin
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <span>Choose Your Companion</span>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+            <path d="M3.75 9H14.25M10.5 5.25L14.25 9L10.5 12.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </motion.button>
 
@@ -101,20 +100,20 @@ export default function Splash() {
           onClick={() => navigate('/resources')}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.4 }}
+          transition={{ delay: 1.2 }}
         >
-          View helplines & resources
+          View helplines & privacy architecture →
         </motion.button>
       </div>
 
       {/* Privacy note */}
       <motion.p
-        className="splash__privacy"
+        className="splash__privacy font-mono"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.6 }}
+        transition={{ delay: 1.4 }}
       >
-        🔒 No account, no name, no photo. Ever.
+        🔒 No accounts · No tracking · Session-only existence
       </motion.p>
     </div>
   )

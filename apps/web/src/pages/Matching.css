@@ -1,16 +1,21 @@
+/* ============================================================
+   SafeSpeak — Matching Animation (Black & White Theme)
+   ============================================================ */
+
 .matching-page {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 50%, #1F3020 0%, #1A2419 60%, #111A10 100%);
+  background: radial-gradient(ellipse at 50% 50%, #171717 0%, #080808 60%, #000000 100%);
   gap: var(--space-6);
   position: relative;
   overflow: hidden;
+  padding: var(--space-6);
 }
 
-/* Expanding rings */
+/* Expanding monochromatic rings */
 .matching-rings {
   position: absolute;
   inset: 0;
@@ -23,22 +28,22 @@
 .matching-ring {
   position: absolute;
   border-radius: 50%;
-  border: 1.5px solid rgba(123,174,127,0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   animation: ring-expand 3.5s ease-out infinite;
 }
 
 @keyframes ring-expand {
   0%   { width: 80px;  height: 80px;  opacity: 0.8; }
-  100% { width: 600px; height: 600px; opacity: 0; }
+  100% { width: 680px; height: 680px; opacity: 0; }
 }
 
 /* Character canvas */
 .matching-char {
-  width: 200px;
-  height: 200px;
+  width: 240px;
+  height: 240px;
   position: relative;
   z-index: 5;
-  filter: drop-shadow(0 0 30px rgba(123,174,127,0.4));
+  filter: drop-shadow(0 0 40px rgba(255, 255, 255, 0.2));
 }
 
 /* Copy */
@@ -50,11 +55,11 @@
 }
 
 .matching-copy__title {
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: clamp(1.6rem, 4.5vw, 2.2rem);
   font-weight: 400;
-  color: var(--color-text-primary);
+  color: #FFFFFF;
   line-height: 1.35;
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .matching-copy__sub {
@@ -75,21 +80,25 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-accent-sage);
+  background: #FFFFFF;
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes dot-pulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1.2); }
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); }
 }
 
 .matching-skip {
   position: absolute;
   bottom: max(var(--space-8), env(safe-area-inset-bottom));
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--color-text-dim);
   z-index: 5;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
+}
+
+.matching-skip:hover {
+  color: #FFFFFF;
 }

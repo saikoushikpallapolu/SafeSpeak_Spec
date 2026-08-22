@@ -4,20 +4,8 @@ import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import { getCharacterById } from '../data/characters'
-import { OwlModel, DeerModel, PandaModel, RabbitModel, CapybaraModel, AxolotlModel } from '../components/characters/CharacterModels'
+import { CharacterModelRenderer } from '../components/characters/CharacterModels'
 import './Matching.css'
-
-function SmallModel({ id }: { id: string }) {
-  switch (id) {
-    case 'owl': return <OwlModel />
-    case 'deer': return <DeerModel />
-    case 'panda': return <PandaModel />
-    case 'rabbit': return <RabbitModel />
-    case 'capybara': return <CapybaraModel />
-    case 'axolotl': return <AxolotlModel />
-    default: return null
-  }
-}
 
 export default function Matching() {
   const navigate = useNavigate()
@@ -50,7 +38,7 @@ export default function Matching() {
           <directionalLight position={[3, 5, 3]} intensity={1.2} />
           <directionalLight position={[-2, -1, -2]} intensity={0.3} color={character?.accentColor || '#C9A84C'} />
           <Suspense fallback={null}>
-            <SmallModel id={charId} />
+            <CharacterModelRenderer id={charId} />
           </Suspense>
         </Canvas>
       </motion.div>

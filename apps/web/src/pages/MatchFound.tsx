@@ -3,20 +3,8 @@ import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import { getCharacterById, CHARACTERS } from '../data/characters'
-import { OwlModel, DeerModel, PandaModel, RabbitModel, CapybaraModel, AxolotlModel } from '../components/characters/CharacterModels'
+import { CharacterModelRenderer } from '../components/characters/CharacterModels'
 import './MatchFound.css'
-
-function Model({ id }: { id: string }) {
-  switch (id) {
-    case 'owl': return <OwlModel hovered />
-    case 'deer': return <DeerModel hovered />
-    case 'panda': return <PandaModel hovered />
-    case 'rabbit': return <RabbitModel hovered />
-    case 'capybara': return <CapybaraModel hovered />
-    case 'axolotl': return <AxolotlModel hovered />
-    default: return null
-  }
-}
 
 export default function MatchFound() {
   const navigate = useNavigate()
@@ -45,7 +33,7 @@ export default function MatchFound() {
             <ambientLight intensity={0.7} />
             <directionalLight position={[3, 5, 3]} intensity={1.2} />
             <directionalLight position={[-2, -1, -2]} intensity={0.3} color={me.accentColor} />
-            <Suspense fallback={null}><Model id={myId} /></Suspense>
+            <Suspense fallback={null}><CharacterModelRenderer id={myId} hovered /></Suspense>
           </Canvas>
           <span className="matchfound-char__label">{me.name}</span>
         </motion.div>
@@ -71,7 +59,7 @@ export default function MatchFound() {
             <ambientLight intensity={0.7} />
             <directionalLight position={[3, 5, 3]} intensity={1.2} />
             <directionalLight position={[-2, -1, -2]} intensity={0.3} color={other.accentColor} />
-            <Suspense fallback={null}><Model id={otherId} /></Suspense>
+            <Suspense fallback={null}><CharacterModelRenderer id={otherId} hovered /></Suspense>
           </Canvas>
           <span className="matchfound-char__label">{other.name}</span>
         </motion.div>
