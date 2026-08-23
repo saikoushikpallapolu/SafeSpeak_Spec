@@ -120,7 +120,7 @@ export default function Chat() {
     }
   }, [messages, isPeerTyping, myUserId])
 
-  // Handle Crisis Alert (Tier 2) -> Instant emergency overlay
+  // Handle Crisis Alert (Tier 2) -> Instant emergency support banner
   useEffect(() => {
     if (crisisAlert && crisisAlert.tier === 2) {
       setSelfCrisisBanner(true)
@@ -155,12 +155,12 @@ export default function Chat() {
     const text = input.trim()
     if (!text) return
 
-    // 1. Instant Client-Side Moderation Guard (Threats, Violence, Slurs, Harassment)
+    // 1. Instant Client-Side Moderation Guard (Threats, Violence, Slurs, Harassment, Toxic abuse)
     const mod = checkModeration(text)
     if (mod.verdict === 'blocked') {
       setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited language, threats, or harassment.')
       soundFx.playBreathIn()
-      return // Halt immediately - do not send or clear
+      return // STRICTLY HALT - DO NOT SEND TO CHAT
     }
 
     // 2. Instant Client-Side Crisis Guard (Suicide, Self-Harm)
@@ -168,12 +168,14 @@ export default function Chat() {
     if (crisis === 2) {
       setSelfCrisisBanner(true)
       soundFx.playBreathIn()
-    } else if (crisis === 1) {
+      return // STRICTLY HALT - DO NOT SEND TO CHAT
+    }
+    if (crisis === 1) {
       setInAppNudge(true)
       soundFx.playBreathIn()
     }
 
-    // 3. Dispatch message
+    // 3. Dispatch message only if clean and safe
     setInput('')
     if (isRecording) {
       stopListening()
