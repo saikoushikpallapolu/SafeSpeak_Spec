@@ -7,7 +7,7 @@ import { soundFx } from '../services/soundFx'
 import SOSButton from '../components/common/SOSButton'
 import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
 import { getOrCreateUserId } from '../services/firestoreMatching'
-import { checkModeration, checkCrisisTier } from '../services/safetyAndTranslation'
+import { checkModeration, checkCrisisTier, translateMessage } from '../services/safetyAndTranslation'
 import './Chat.css'
 
 const AVAILABLE_LANGS = [
@@ -37,10 +37,12 @@ export default function Chat() {
 
   const [activeLang, setActiveLang] = useState(initialLang)
   const [showLangDropdown, setShowLangDropdown] = useState(false)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [isMuted, setIsMuted] = useState(soundFx.isMuted())
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [input, setInput] = useState('')
   const [showOriginalMap, setShowOriginalMap] = useState<Record<string, boolean>>({})
+  const [dynamicTranslations, setDynamicTranslations] = useState<Record<string, string>>({})
   const [inAppNudge, setInAppNudge] = useState(false)
   const [activeModWarning, setActiveModWarning] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -70,6 +72,34 @@ export default function Chat() {
       setInput(transcript)
     }
   }, [transcript])
+
+  // Real-time dynamic translation of peer messages into activeLang when user switches language
+  useEffect(() => {
+    let isCancelled = false
+
+    async function translateIncoming() {
+      const updates: Record<string, string> = {}
+      for (const m of messages) {
+        if (m.senderId !== myUserId) {
+          const res = await translateMessage(m.text, activeLang)
+          if (res.translatedText && res.translatedText !== m.text) {
+            updates[m.id] = res.translatedText
+          }
+        }
+      }
+      if (!isCancelled) {
+        setDynamicTranslations(prev => ({ ...prev, ...updates }))
+      }
+    }
+
+    if (messages.length > 0) {
+      translateIncoming()
+    }
+
+    return () => {
+      isCancelled = true
+    }
+  }, [messages, activeLang, myUserId])
 
   // Scroll to bottom on new message & play chime for peer
   useEffect(() => {
@@ -120,7 +150,7 @@ export default function Chat() {
     // 1. Instant Client-Side Moderation Guard
     const mod = checkModeration(text)
     if (mod.verdict === 'blocked') {
-      setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited vulgar words, slurs, or harassment.')
+      setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited language, slurs, or harassment.')
       soundFx.playBreathIn()
       return // Halt immediately - do not send or clear
     }
@@ -214,7 +244,7 @@ export default function Chat() {
             <button
               className="chat-header__lang-badge font-mono"
               onClick={() => setShowLangDropdown(!showLangDropdown)}
-              title="Click to change your target language"
+              title="Click to switch your translation language"
             >
               <span>🌐 {activeLang}</span>
               <span style={{ fontSize: '0.6rem', marginLeft: 4 }}>▼</span>
@@ -255,6 +285,16 @@ export default function Chat() {
         </div>
 
         <div className="chat-header__actions">
+          {/* Privacy Guarantee Shield Button */}
+          <button
+            className="btn btn-ghost chat-header__btn"
+            onClick={() => setShowPrivacyModal(true)}
+            aria-label="How your identity is kept private"
+            title="Privacy & Anonymity Shield"
+          >
+            🔒
+          </button>
+
           {/* Sound Mute Toggle */}
           <button
             className="btn btn-ghost chat-header__btn"
@@ -267,7 +307,7 @@ export default function Chat() {
 
           <SOSButton />
           
-          <button className="btn btn-ghost chat-header__btn" onClick={() => navigate('/resources')} aria-label="Help resources" title="Helplines & Privacy">
+          <button className="btn btn-ghost chat-header__btn" onClick={() => navigate('/resources')} aria-label="Help resources" title="Helplines & Grounding">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.5" />
               <path d="M9 12V9M9 6.5V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -337,8 +377,9 @@ export default function Chat() {
           const isMe = msg.senderId === myUserId || msg.senderId.startsWith('me')
           const senderChar = getCharacterById(msg.senderCharacter) || (isMe ? me : other)
           const showOriginal = showOriginalMap[msg.id]
-          const displayText = showOriginal ? msg.text : (msg.translatedText || msg.text)
-          const hasTranslation = Boolean(msg.translatedText && msg.translatedText !== msg.text)
+          const liveTranslated = dynamicTranslations[msg.id] || msg.translatedText
+          const displayText = showOriginal ? msg.text : (liveTranslated || msg.text)
+          const hasTranslation = Boolean(liveTranslated && liveTranslated !== msg.text)
 
           return (
             <motion.div
@@ -388,7 +429,7 @@ export default function Chat() {
                       className="chat-bubble-translate-toggle font-mono"
                       onClick={() => toggleOriginal(msg.id)}
                     >
-                      {showOriginal ? '• View translated' : `• Translated from ${msg.originalLanguage || 'other language'}`}
+                      {showOriginal ? '• View translated' : `• Translated to ${activeLang}`}
                     </button>
                   )}
                 </div>
@@ -522,6 +563,69 @@ export default function Chat() {
           </button>
         </div>
       </footer>
+
+      {/* Identity Privacy Shield Modal */}
+      <AnimatePresence>
+        {showPrivacyModal && (
+          <motion.div
+            className="chat-modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPrivacyModal(false)}
+          >
+            <motion.div
+              className="chat-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '440px' }}
+            >
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🔒</div>
+              <h3 className="font-display">How Your Identity Is Protected</h3>
+              <p className="font-body" style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
+                SafeSpeak is built from the ground up for total confidentiality and emotional safety.
+              </p>
+              <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <span>🛡️</span>
+                  <div>
+                    <strong>Zero Account / No Personal Data</strong>
+                    <div style={{ color: '#94a3b8' }}>No email, name, phone number, or profile photo required.</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <span>🎭</span>
+                  <div>
+                    <strong>Ephemeral Cartoon Persona</strong>
+                    <div style={{ color: '#94a3b8' }}>You are identified solely by your chosen animal avatar ({myTag}).</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <span>💨</span>
+                  <div>
+                    <strong>Zero Transcript Storage</strong>
+                    <div style={{ color: '#94a3b8' }}>Messages exist only in active memory and are permanently wiped when you leave.</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <span>🌐</span>
+                  <div>
+                    <strong>Isolated Anonymous Matching</strong>
+                    <div style={{ color: '#94a3b8' }}>IP addresses and device telemetry are never shared with peers.</div>
+                  </div>
+                </div>
+              </div>
+              <div className="chat-modal__actions" style={{ marginTop: '20px' }}>
+                <button className="btn btn-primary" onClick={() => setShowPrivacyModal(false)} style={{ width: '100%' }}>
+                  Got it, thank you
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Exit Confirmation Dialog */}
       <AnimatePresence>

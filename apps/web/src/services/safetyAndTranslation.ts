@@ -1,136 +1,57 @@
 import type { CharacterId, ChatMessage, CrisisTier, ModerationResult, ReflectionSummary } from '@safespeak/shared-types'
+import { evaluateAiSafety, evaluateAiCrisis, normalizeText } from './aiSafetyEngine'
 
-// Comprehensive Slurs, Profanity, Hate Speech, and Toxic Language patterns
-const SLUR_AND_HATE_PATTERNS = [
-  /\b(n+[i1!|]+g+g+[a4e3i1o0]+r*|n+[i1!|]+g+a+|f+a+g+g?o?t?|k+i+k+e+|c+h+i+n+k+|c+u+n+t+|b+i+t+c+h+|w+h+o+r+e+|s+l+u+t+|r+e+t+a+r+d+|f+u+c+k+|a+s+s+h+o+l+e+|d+i+c+k+)\b/i,
-  /\b(m+a+d+a+r+c+h+o+d+|b+e+h+e+n+c+h+o+d+|b+h+o+s+d+i+k+e+|c+h+u+t+i+y+a+|g+a+n+d+u+|r+a+n+d+i+|l+a+n+j+a|d+e+n+g+u+|t+h+e+v+i+d+y+a+|p+u+n+d+a+|s+a+a+l+e+|k+u+t+t+e+)\b/i,
-]
-
-// Severe Abuse and Harassment patterns
-const SEVERE_ABUSE_PATTERNS = [
-  /\b(kill yourself|kys|go die|nobody loves you|you should die|die in a hole|piece of shit|worthless piece|eat shit)\b/i,
-  /\b(mar ja saale|mar ja kutte|chup chap mar|chachi po|santhi po)\b/i,
-]
-
-// Harmful Medical Advice patterns
-const HARMFUL_MEDICAL_PATTERNS = [
-  /\b(stop (taking\s+)?(your\s+)?(antidepressants|medication|medicine|prescriptions|pills))\b/i,
-  /\b(drink (bleach|bleaching|kerosene)|take \d+ pills|overdose on|jump off|hang yourself|slit your wrists)\b/i,
-]
-
-// Invalidation / Soft Toxicity patterns
-const SOFT_FLAG_PATTERNS = [
-  /\b(stop crying|you'?re just being dramatic|drama queen|attention seeker|grow up|loser|get over it already|you are stupid)\b/i,
-  /\b(natak band kar|overacting mat kar|dramebaaz|acting apu|over action cheyyaku)\b/i,
-]
-
-// Tier 2: Critical Emergency / Self-Harm / Suicide
-const TIER_2_PATTERNS = [
-  /\b(want to|wanna|going to|gonna)\s+(die|end it all|kill myself|hang myself|cut myself)\b/i,
-  /\b(suicide|suicidal|end my life|take my own life)\b/i,
-  /\b(no reason to live|better off dead|wish i was dead|wish i were dead)\b/i,
-  /\b(giving up on life|can'?t go on anymore|want to disappear forever)\b/i,
-  /\b(goodbye world|final goodbye|goodbye forever)\b/i,
-  /\b(overdose on|slit my wrists|jump off a)\b/i,
-  /\b(nobody would care if i died|everyone better without me)\b/i,
-  /\b(mar jaana chahta|khudkushi|jaan de dunga|mar jaunga|chachi povali|pranam theesukunta|saaganum pola irukku)\b/i,
-]
-
-// Tier 1: Mild Concern / Panic / Overwhelm
-const TIER_1_PATTERNS = [
-  /\b(so stressed|extreme stress|stressing out|stressed out)\b/i,
-  /\b(overwhelmed|overwhelming|can'?t handle this|too much pressure)\b/i,
-  /\b(panic attack|anxiety attack|having anxiety|feeling anxious)\b/i,
-  /\b(crying non stop|crying all day|can'?t stop crying)\b/i,
-  /\b(feeling so down|feeling empty|feeling lonely|so lonely)\b/i,
-  /\b(exam pressure|failing my exam|fear of failure)\b/i,
-  /\b(burned out|exhausted mentally|mental breakdown|breaking down)\b/i,
-  /\b(bahut tension|bohot stress|rona aa raha|ghabrahat|bayam ga undi|edupu vasthondi|azhugaya varudhu)\b/i,
-]
+// ---------------------------------------------------------------------------
+// 1. CRISIS & EMERGENCY EVALUATION (Rule-Based & Semantic)
+// ---------------------------------------------------------------------------
 
 export function checkCrisisTier(text: string): CrisisTier {
-  if (!text || typeof text !== 'string') return 0
-  const clean = text.trim().toLowerCase()
-
-  for (const pattern of TIER_2_PATTERNS) {
-    if (pattern.test(clean)) return 2
-  }
-  for (const pattern of TIER_1_PATTERNS) {
-    if (pattern.test(clean)) return 1
-  }
-  return 0
+  return evaluateAiCrisis(text)
 }
+
+// ---------------------------------------------------------------------------
+// 2. MODERATION & SAFETY FILTER (Bullying, Abusive Language, False Medical Advice)
+// ---------------------------------------------------------------------------
 
 export function checkModeration(text: string): ModerationResult {
-  if (!text || typeof text !== 'string') return { verdict: 'clean' }
-  const clean = text.trim().toLowerCase()
-
-  // 1. Slurs and Hate Speech -> BLOCKED
-  for (const pattern of SLUR_AND_HATE_PATTERNS) {
-    if (pattern.test(clean)) {
-      return {
-        verdict: 'blocked',
-        category: 'hate_speech',
-        reason: 'Message blocked: Contains prohibited profanity, slurs, or abusive language.',
-      }
-    }
-  }
-
-  // 2. Severe Abuse -> BLOCKED
-  for (const pattern of SEVERE_ABUSE_PATTERNS) {
-    if (pattern.test(clean)) {
-      return {
-        verdict: 'blocked',
-        category: 'harassment',
-        reason: 'Message blocked: Abusive language or harassment violates community guidelines.',
-      }
-    }
-  }
-
-  // 3. Harmful Medical Advice -> BLOCKED
-  for (const pattern of HARMFUL_MEDICAL_PATTERNS) {
-    if (pattern.test(clean)) {
-      return {
-        verdict: 'blocked',
-        category: 'harmful_medical',
-        reason: 'Message blocked: Giving harmful or unverified medical advice is restricted.',
-      }
-    }
-  }
-
-  // 4. Soft Flag / Invalidation -> SOFT FLAG
-  for (const pattern of SOFT_FLAG_PATTERNS) {
-    if (pattern.test(clean)) {
-      return {
-        verdict: 'soft_flag',
-        category: 'bullying',
-        reason: 'This message might feel invalidating. Consider rephrasing with empathy.',
-        suggestedRephrase: 'I hear you, and it sounds really difficult.',
-      }
-    }
-  }
-
-  return { verdict: 'approved' }
+  return evaluateAiSafety(text)
 }
 
-export function detectLanguage(text: string): 'Hindi' | 'Telugu' | 'Tamil' | 'Hinglish' | 'English' {
+// ---------------------------------------------------------------------------
+// 3. MULTI-LINGUAL LANGUAGE DETECTION (Hindi, Telugu, Tamil, Hinglish, Tenglish, English)
+// ---------------------------------------------------------------------------
+
+export function detectLanguage(text: string): 'Hindi' | 'Telugu' | 'Tamil' | 'Hinglish' | 'Tenglish' | 'Tanglish' | 'English' {
+  if (!text) return 'English'
+
+  // Script-based detection
   if (/[\u0900-\u097F]/.test(text)) return 'Hindi'
   if (/[\u0C00-\u0C7F]/.test(text)) return 'Telugu'
   if (/[\u0B80-\u0BFF]/.test(text)) return 'Tamil'
 
   const lower = text.toLowerCase()
-  if (/\b(hai|hoon|kya|kyu|kaise|mera|meri|mujhe|bahut|karna|samjha|nahi|bohot|lag|raha|rahi|accha|shukriya)\b/.test(lower)) {
+
+  // Hinglish conversational markers
+  if (/\b(hai|hoon|kya|kyu|kaise|mera|meri|mujhe|bahut|karna|samjha|nahi|bohot|lag|raha|rahi|accha|shukriya|yaar|bhai|kuch|kare|karte|hum|tum|aap|batao|samajh|tension|sahi|bilkul|baat|thoda|hoga|hogi|padhai|neend|chinta)\b/.test(lower)) {
     return 'Hinglish'
   }
-  if (/\b(undi|naku|cheyali|chesthunna|ela|ippudu|koddiga|ledhu|unnanu|avunu|chala|bayam|edupu|gunde)\b/.test(lower)) {
-    return 'Telugu'
+
+  // Tenglish conversational markers
+  if (/\b(undi|naku|cheyali|chesthunna|ela|ippudu|koddiga|ledhu|unnanu|avunu|chala|bayam|edupu|gunde|garu|andi|kooda|kaadhu|mari|em|enti|cheppu|ardham|kavali|baga|chusi|ravali|anipisthundi)\b/.test(lower)) {
+    return 'Tenglish'
   }
-  if (/\b(irukku|pudikala|theriyuma|panren|epdi|ippo|nalla|kitta|romba|aama|azhuga|thangika)\b/.test(lower)) {
-    return 'Tamil'
+
+  // Tanglish conversational markers
+  if (/\b(irukku|pudikala|theriyuma|panren|epdi|ippo|nalla|kitta|romba|aama|azhuga|thangika|machan|da|di|theriyala|pesa|solla|mudiyala|kavala)\b/.test(lower)) {
+    return 'Tanglish'
   }
 
   return 'English'
 }
+
+// ---------------------------------------------------------------------------
+// 4. DICTIONARY & CONVERSATIONAL TRANSLATION PHRASES (0ms Instant Tier)
+// ---------------------------------------------------------------------------
 
 interface TranslationPhrase {
   en: string
@@ -180,6 +101,15 @@ const PHRASE_DATABASE: TranslationPhrase[] = [
     tanglish: "Idhu kekka konjam relief ah irukku. Ungalukku work aagura strategies edhavadhu theriyuma?",
   },
   {
+    en: "I try the 10-minute rule: study for 10 minutes, take a short breath, and repeat.",
+    hi: "मैं 10 मिनट का नियम आजमाता हूँ: 10 मिनट पढ़ाई करो, गहरी सांस लो, और फिर दोहराओ।",
+    hinglish: "Mai 10-minute rule try karta hu: 10 min padho, thoda deep breath lo, aur repeat karo.",
+    te: "నేను 10 నిమిషాల నియమాన్ని పాటిస్తాను: 10 నిమిషాలు చదవడం, చిన్న విరామం తీసుకోవడం, మళ్ళీ చేయడం.",
+    tenglish: "Nenu 10-minute rule try chestha: 10 mins chadavadam, chinna break theesukondi, repeat cheyadam.",
+    ta: "நான் 10 நிமிட விதியை பின்பற்றுகிறேன்: 10 நிமிடம் படிக்கவும், ஒரு சிறிய இடைவெளி எடுக்கவும், மீண்டும் செய்யவும்.",
+    tanglish: "Naan 10-minute rule try panren: 10 mins padikka, chinna break edukka, repeat panna.",
+  },
+  {
     en: "How are you feeling right now?",
     hi: "आप अभी कैसा महसूस कर रहे हैं?",
     hinglish: "Aap abhi kaisa feel kar rahe ho?",
@@ -206,7 +136,61 @@ const PHRASE_DATABASE: TranslationPhrase[] = [
     ta: "வணக்கம், உங்களுடன் இணைந்ததில் மகிழ்ச்சி.",
     tanglish: "Hello, unga kitta connect aanadhula romba sandhosham.",
   },
+  {
+    en: "I am feeling so stressed today.",
+    hi: "मुझे आज बहुत तनाव महसूस हो रहा है।",
+    hinglish: "Mujhe aaj bohot stress feel ho raha hai.",
+    te: "ఈరోజు నాకు చాలా ఒత్తిడిగా అనిపిస్తోంది.",
+    tenglish: "Ee roju naku chala stress ga anipisthundi.",
+    ta: "இன்று எனக்கு அதிக மன அழுத்தம் ஏற்படுகிறது.",
+    tanglish: "Inaiku enakku romba stress ah irukku.",
+  },
+  {
+    en: "Everything feels so overwhelming lately.",
+    hi: "हाल ही में सब कुछ बहुत भारी और कठिन लग रहा है।",
+    hinglish: "Lately sab kuch bohot overwhelming lag raha hai.",
+    te: "ఈ మధ్య ప్రతిదీ చాలా భారంగా అనిపిస్తోంది.",
+    tenglish: "Ee madhya prathidhi chala bharamga anipistondi.",
+    ta: "சமீபகாலமாக எல்லாமே மிகவும் கடினமாக தோன்றுகிறது.",
+    tanglish: "Ipo ellame romba kashtama irukku.",
+  },
+  {
+    en: "Thank you for listening to me.",
+    hi: "मेरी बात सुनने के लिए आपका बहुत धन्यवाद।",
+    hinglish: "Meri baat sunne ke liye bohot shukriya.",
+    te: "నా మాట విన్నందుకు చాలా ధన్యవాదాలు.",
+    tenglish: "Na maata vinnanduku chala thanks.",
+    ta: "என் பேச்சைக் கேட்டதற்கு மிக்க நன்றி.",
+    tanglish: "Enna ketadhukku romba nandri.",
+  },
 ]
+
+// Conversational rule-based patterns for casual mixed-language inputs
+const HINGLISH_PATTERNS: Array<{ regex: RegExp; en: string; hi: string; te: string }> = [
+  { regex: /mujhe (bhi )?aise hi lag raha/i, en: "I feel the exact same way.", hi: "मुझे भी ऐसा ही लग रहा है।", te: "నాకు కూడా అలాగే అనిపిస్తోంది." },
+  { regex: /bohot (stress|tension|pressure)|bahut (stress|tension)/i, en: "I am dealing with a lot of stress right now.", hi: "मुझे अभी बहुत तनाव महसूस हो रहा है।", te: "నాకు ప్రస్తుతం చాలా ఒత్తిడిగా ఉంది." },
+  { regex: /kuch samajh nahi aa raha/i, en: "I can't seem to figure anything out.", hi: "मुझे कुछ समझ नहीं आ रहा है।", te: "నాకేం అర్థం కావడం లేదు." },
+  { regex: /kya karu/i, en: "What should I do?", hi: "मैं क्या करूँ?", te: "నేనేం చేయాలి?" },
+  { regex: /shukriya|dhanyawad|thanks/i, en: "Thank you so much.", hi: "आपका बहुत-बहुत धन्यवाद।", te: "చాలా ధన్యవాదాలు." },
+  { regex: /sahi bola|sahi baat hai/i, en: "You are totally right.", hi: "आपने बिल्कुल सही कहा।", te: "మీరు చెప్పింది కరెక్ట్." },
+  { regex: /boards? exam|exam ki tension/i, en: "I am so stressed about my upcoming exams.", hi: "मुझे आने वाली परीक्षाओं का बहुत तनाव है।", te: "నాకు పరీక్షలంటే చాలా భయంగా ఉంది." },
+  { regex: /akela feel ho raha|akelapan/i, en: "I have been feeling very lonely.", hi: "मुझे बहुत अकेलापन महसूस हो रहा है।", te: "నాకు చాలా ఒంటరిగా అనిపిస్తోంది." },
+  { regex: /neend nahi aa rahi/i, en: "I am having trouble sleeping.", hi: "मुझे नींद नहीं आ रही है।", te: "నాకు నిద్ర పట్టడం లేదు." },
+  { regex: /yaar bohot darr lag raha hai/i, en: "Friend, I am feeling really scared.", hi: "यार, मुझे बहुत डर लग रहा है।", te: "చాలా భయంగా అనిపిస్తోంది." },
+]
+
+const TENGLISH_PATTERNS: Array<{ regex: RegExp; en: string; hi: string }> = [
+  { regex: /stress ekkuva|tension ekkuva|chala stress/i, en: "I am dealing with high stress.", hi: "मुझे बहुत तनाव हो रहा है।" },
+  { regex: /naku kooda ilage|same anipistondi/i, en: "I feel the exact same way.", hi: "मुझे भी ऐसा ही लग रहा है।" },
+  { regex: /em cheyalo ardham kavatledu/i, en: "I don't know what to do right now.", hi: "मुझे समझ नहीं आ रहा कि क्या करूँ।" },
+  { regex: /chala thanks|dhanyavadalu/i, en: "Thank you very much.", hi: "आपका बहुत धन्यवाद।" },
+  { regex: /ontariga anipistondi/i, en: "I feel quite lonely today.", hi: "मुझे आज अकेलापन लग रहा है।" },
+  { regex: /bhayam ga undi|bayam ga undi/i, en: "I am feeling scared.", hi: "मुझे डर लग रहा है।" },
+]
+
+// ---------------------------------------------------------------------------
+// 5. RESILIENT REAL-TIME TRANSLATION PIPELINE
+// ---------------------------------------------------------------------------
 
 export async function translateMessage(
   text: string,
@@ -216,11 +200,11 @@ export async function translateMessage(
     return { originalLang: 'English', targetLang, translatedText: '' }
   }
 
-  const detected = detectLanguage(text)
   const clean = text.trim()
   const lower = clean.toLowerCase()
+  const detected = detectLanguage(clean)
 
-  // 1. Direct matched conversational database
+  // 1. Check direct conversational phrase match (0ms)
   for (const entry of PHRASE_DATABASE) {
     const matchesAny =
       entry.en.toLowerCase() === lower ||
@@ -240,7 +224,27 @@ export async function translateMessage(
     }
   }
 
-  // 2. Map language names to codes
+  // 2. Check rule-based mixed patterns
+  if (detected === 'Hinglish' || detected === 'Hindi') {
+    for (const p of HINGLISH_PATTERNS) {
+      if (p.regex.test(clean)) {
+        if (targetLang === 'Hindi') return { originalLang: detected, targetLang, translatedText: p.hi }
+        if (targetLang === 'Telugu') return { originalLang: detected, targetLang, translatedText: p.te }
+        return { originalLang: detected, targetLang: 'English', translatedText: p.en }
+      }
+    }
+  }
+
+  if (detected === 'Tenglish' || detected === 'Telugu') {
+    for (const p of TENGLISH_PATTERNS) {
+      if (p.regex.test(clean)) {
+        if (targetLang === 'Hindi') return { originalLang: detected, targetLang, translatedText: p.hi }
+        return { originalLang: detected, targetLang: 'English', translatedText: p.en }
+      }
+    }
+  }
+
+  // 3. Map target language to ISO code for online dynamic API
   const langCodeMap: Record<string, string> = {
     Hindi: 'hi',
     Telugu: 'te',
@@ -250,50 +254,32 @@ export async function translateMessage(
   }
   const targetCode = langCodeMap[targetLang] || 'en'
 
-  // 3. Online dynamic translation (Free Google GTX endpoint for arbitrary text)
+  // 4. Online dynamic translation with Google GTX endpoint
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 2000)
+    const timeoutId = setTimeout(() => controller.abort(), 2200)
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetCode}&dt=t&q=${encodeURIComponent(clean)}`
     const res = await fetch(url, { signal: controller.signal })
     clearTimeout(timeoutId)
+
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && Array.isArray(data[0])) {
         const translated = data[0].map((item: any) => item[0]).join('')
         if (translated && translated.trim()) {
-          return { originalLang: detected, targetLang, translatedText: translated.trim() }
+          return {
+            originalLang: detected,
+            targetLang,
+            translatedText: translated.trim(),
+          }
         }
       }
     }
   } catch (_) {
-    // Fallback to offline rule dictionary below
+    // Graceful fallback to rule-based or clean text
   }
 
-  // 4. Offline rule-based fallbacks
-  if (detected === 'Hinglish' || detected === 'Hindi') {
-    if (targetLang === 'English') {
-      let en = clean
-      if (/mujhe (bhi )?aise hi lag raha/i.test(lower)) en = "I feel the exact same way."
-      else if (/bahut (stress|tension) ho raha/i.test(lower) || /bohot (stress|tension)/i.test(lower)) en = "I am feeling a lot of stress right now."
-      else if (/shukriya|dhanyawad|thanks/i.test(lower)) en = "Thank you so much."
-      else if (/boards? exam/i.test(lower) || /exam ki tension/i.test(lower)) en = "I am so stressed about my upcoming exams."
-      else if (/akela feel ho raha|akelapan/i.test(lower)) en = "I have been feeling very lonely."
-      return { originalLang: detected, targetLang: 'English', translatedText: en }
-    }
-  }
-
-  if (detected === 'Telugu') {
-    if (targetLang === 'English') {
-      let en = clean
-      if (/stress ekkuva|tension ekkuva/i.test(lower)) en = "I am dealing with high stress."
-      else if (/naku kooda ilage/i.test(lower) || /same anipistondi/i.test(lower)) en = "I feel the exact same way."
-      else if (/chala thanks|dhanyavadalu/i.test(lower)) en = "Thank you very much."
-      else if (/ontariga anipistondi/i.test(lower)) en = "I feel quite lonely today."
-      return { originalLang: detected, targetLang: 'English', translatedText: en }
-    }
-  }
-
+  // 5. English to regional rule-based fallbacks
   if (detected === 'English') {
     if (targetLang === 'Hindi') {
       if (/same here|i agree|relatable|me too/i.test(lower)) return { originalLang: 'English', targetLang: 'Hindi', translatedText: "मैं भी यही महसूस कर रहा हूँ।" }
@@ -308,6 +294,10 @@ export async function translateMessage(
 
   return { originalLang: detected, targetLang, translatedText: clean }
 }
+
+// ---------------------------------------------------------------------------
+// 6. SIMULATED PEER & REFLECTION HELPERS
+// ---------------------------------------------------------------------------
 
 const PEER_PERSONAS: Record<CharacterId, { name: string; style: string; defaultIcebreaker: string }> = {
   owl: { name: 'StressedOwl', style: 'thoughtful, analytical', defaultIcebreaker: "Hey... I've been overthinking everything today. How are you holding up?" },
