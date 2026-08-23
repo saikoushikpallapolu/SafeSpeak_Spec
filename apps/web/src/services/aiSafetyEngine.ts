@@ -28,34 +28,34 @@ export function normalizeText(raw: string): string {
 
 // Threats against the other user or violence
 const VIOLENCE_AND_THREAT_PATTERNS = [
-  /\b(i\s+)?(want to|wanna|going to|gonna|will)\s+kill\s+(you|u)\b/i,
-  /\b(kill|murder|stab|shoot|strangle|slit\s+your|beat\s+up|punch|hurt)\s+(you|u)\b/i,
-  /\b(die\s+(you|bitch|bastard)|go\s+die|hope\s+you\s+die)\b/i,
-  /\b(tere\s+ko\s+maar\s+dunga|tujhe\s+maar\s+dunga|ninnu\s+champestha|unnai\s+kolluven)\b/i,
+  /want\s*to\s*kill\s*(you|u)|wanna\s*kill\s*(you|u)|going\s*to\s*kill\s*(you|u)|gonna\s*kill\s*(you|u)|will\s*kill\s*(you|u)/i,
+  /kill\s*(you|u)|murder\s*(you|u)|stab\s*(you|u)|shoot\s*(you|u)|strangle\s*(you|u)|beat\s*up\s*(you|u)|punch\s*(you|u)|hurt\s*(you|u)/i,
+  /die\s*(you|bitch|bastard)|go\s*die|hope\s*you\s*die|i\s*will\s*murder/i,
+  /tere\s*ko\s*maar\s*dunga|tujhe\s*maar\s*dunga|ninnu\s*champestha|unnai\s*kolluven/i,
 ]
 
 // Slurs and severe profanity
 const PROHIBITED_SLURS = [
-  /\b(n+[i1!|e3a4]+g+g+[a4e3i1o0]+r*|n+[i1!|e3a4]+g+a+|f+a+g+g?o?t?|k+i+k+e|c+h+i+n+k|c+u+n+t|b+i+t+c+h|w+h+o+r+e|s+l+u+t|r+e+t+a+r+d|f+u+c+k|a+s+s+h+o+l+e|d+i+c+k|p+u+s+s+y)\b/i,
+  /\b(n+[i1!e3a4]+g+g+[a4e3i1o0]+r*|n+[i1!e3a4]+g+a+|f+a+g+g?o?t?|k+i+k+e|c+h+i+n+k|c+u+n+t|b+i+t+c+h|w+h+o+r+e|s+l+u+t|r+e+t+a+r+d|f+u+c+k|a+s+s+h+o+l+e|d+i+c+k|p+u+s+s+y)\b/i,
   /\b(m+a+d+a+r+c+h+o+d|b+e+h+e+n+c+h+o+d|b+h+o+s+d+i+k+e|c+h+u+t+i+y+a|g+a+n+d+u|r+a+n+d+i|l+a+n+j+a|d+e+n+g+u|t+h+e+v+i+d+y+a|p+u+n+d+a|s+a+a+l+e|k+u+t+t+e|h+a+r+a+m+i)\b/i,
 ]
 
 // Harassment & toxic bullying
 const HARASSMENT_PATTERNS = [
-  /\b(kill yourself|kys|go die|nobody loves you|you should die|die in a hole|piece of shit|worthless piece|eat shit|rot in hell)\b/i,
-  /\b(mar ja saale|mar ja kutte|chup chap mar|chachi po|santhi po)\b/i,
+  /kill\s*yourself|kys|go\s*die|nobody\s*loves\s*you|you\s*should\s*die|die\s*in\s*a\s*hole|piece\s*of\s*shit|worthless\s*piece|eat\s*shit|rot\s*in\s*hell/i,
+  /mar\s*ja\s*saale|mar\s*ja\s*kutte|chup\s*chap\s*mar|chachi\s*po|santhi\s*po/i,
 ]
 
 // False & dangerous health / medical advice
 const HARMFUL_ADVICE_PATTERNS = [
-  /\b(stop (taking\s+)?(your\s+)?(antidepressants|medication|medicine|prescriptions|pills))\b/i,
-  /\b(drink (bleach|bleaching|kerosene)|take \d+ pills|overdose on|jump off|hang yourself|slit your wrists)\b/i,
+  /stop\s*(taking\s*)?(your\s*)?(antidepressants|medication|medicine|prescriptions|pills)/i,
+  /drink\s*(bleach|bleaching|kerosene)|take\s*\d+\s*pills|overdose\s*on|jump\s*off|hang\s*yourself|slit\s*your\s*wrists/i,
 ]
 
 // Invalidation & soft harassment
 const SOFT_NUDGE_PATTERNS = [
-  /\b(stop crying|you'?re just being dramatic|drama queen|attention seeker|grow up|loser|get over it already|you are stupid)\b/i,
-  /\b(natak band kar|overacting mat kar|dramebaaz|acting apu|over action cheyyaku)\b/i,
+  /stop\s*crying|you'?re\s*just\s*being\s*dramatic|drama\s*queen|attention\s*seeker|grow\s*up|loser|get\s*over\s*it\s*already|you\s*are\s*stupid/i,
+  /natak\s*band\s*kar|overacting\s*mat\s*kar|dramebaaz|acting\s*apu|over\s*action\s*cheyyaku/i,
 ]
 
 export function evaluateAiSafety(text: string): ModerationResult {
@@ -127,29 +127,27 @@ export function evaluateAiSafety(text: string): ModerationResult {
 // -------------------------------------------------------------
 
 const TIER_2_CRISIS_INTENT = [
-  // Typo-tolerant suicide patterns (covers: suicide, sucide, suiside, suicde, seppuku, etc.)
-  /\b(s+[u|o0]+[i|y|e]*c+[i|y|e|a]*d+e*|s+[u|o0]+[i|y]*s+[i|y]*d+e*)\b/i,
-  /\b(want to|wanna|going to|gonna|plan to|planning to)\s+(die|end it all|kill myself|hang myself|cut myself|end my life)\b/i,
-  /\b(commit|commiting|committing|ocmmit|comit)\s+(s+[u|o0]+[i|y|e]*c+[i|y|e|a]*d+e*|s+[u|o0]+[i|y]*s+[i|y]*d+e*)\b/i,
-  /\b(kill\s+myself|kil\s+myself|end\s+my\s+life|take\s+my\s+own\s+life)\b/i,
-  /\b(no reason to live|better off dead|wish i was dead|wish i were dead)\b/i,
-  /\b(giving up on life|can'?t go on anymore|want to disappear forever)\b/i,
-  /\b(goodbye world|final goodbye|goodbye forever)\b/i,
-  /\b(overdose on|slit my wrists|jump off a|swallow all my pills)\b/i,
-  /\b(nobody would care if i died|everyone better without me)\b/i,
-  /\b(mar jaana chahta|khudkushi|jaan de dunga|mar jaunga|chachi povali|pranam theesukunta|saaganum pola irukku)\b/i,
+  // Any variation of suicide / sucide / suiside / suicde
+  /suicid|sucide|suiside|suicde|seppuku/i,
+  /commit\s*(suicide|sucide|suiside|suicde|ocmmit|comit)|ocmmit\s*(suicide|sucide)/i,
+  /kill\s*(my|our)?\s*sel(f|ves)|kil\s*myself|have\s*to\s*kill\s*myself|want\s*to\s*kill\s*myself|gonna\s*kill\s*myself/i,
+  /want\s*to\s*die|wanna\s*die|going\s*to\s*die|gonna\s*die|wish\s*i\s*(was|were)\s*dead|better\s*off\s*dead/i,
+  /end\s*my\s*life|take\s*my\s*own\s*life|end\s*it\s*all|giving\s*up\s*on\s*life|no\s*reason\s*to\s*live/i,
+  /hang\s*myself|cut\s*myself|slit\s*my\s*wrist|overdose\s*on\s*pills|swallow\s*all\s*my\s*pills/i,
+  /nobody\s*would\s*care\s*if\s*i\s*died|goodbye\s*world|goodbye\s*forever/i,
+  /mar\s*jaana\s*chahta|khudkushi|jaan\s*de\s*dunga|mar\s*jaunga|chachi\s*povali|pranam\s*theesukunta|saaganum\s*pola/i,
 ]
 
 const TIER_1_DISTRESS_INTENT = [
-  /\b(depressed|depression|depressing|feeling so down|feeling empty)\b/i,
-  /\b(so stressed|extreme stress|stressing out|stressed out)\b/i,
-  /\b(overwhelmed|overwhelming|can'?t handle this|too much pressure)\b/i,
-  /\b(panic attack|anxiety attack|having anxiety|feeling anxious)\b/i,
-  /\b(crying non stop|crying all day|can'?t stop crying)\b/i,
-  /\b(feeling lonely|so lonely|loneliness|alone in this)\b/i,
-  /\b(exam pressure|failing my exam|fear of failure)\b/i,
-  /\b(burned out|exhausted mentally|mental breakdown|breaking down)\b/i,
-  /\b(bahut tension|bohot stress|rona aa raha|ghabrahat|bayam ga undi|edupu vasthondi|azhugaya varudhu)\b/i,
+  /depressed|depression|depressing|feeling\s*so\s*down|feeling\s*empty/i,
+  /so\s*stressed|extreme\s*stress|stressing\s*out|stressed\s*out|too\s*much\s*pressure/i,
+  /overwhelmed|overwhelming|can'?t\s*handle\s*this/i,
+  /panic\s*attack|anxiety\s*attack|having\s*anxiety|feeling\s*anxious/i,
+  /crying\s*non\s*stop|crying\s*all\s*day|can'?t\s*stop\s*crying/i,
+  /feeling\s*lonely|so\s*lonely|loneliness|alone\s*in\s*this/i,
+  /exam\s*pressure|failing\s*my\s*exam|fear\s*of\s*failure/i,
+  /burned\s*out|exhausted\s*mentally|mental\s*breakdown|breaking\s*down/i,
+  /bahut\s*tension|bohot\s*stress|rona\s*aa\s*raha|ghabrahat|bayam\s*ga\s*undi|edupu\s*vasthondi|azhugaya\s*varudhu/i,
 ]
 
 export function evaluateAiCrisis(text: string): CrisisTier {
