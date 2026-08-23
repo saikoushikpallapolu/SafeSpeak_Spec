@@ -1,15 +1,65 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import SOSButton from '../components/common/SOSButton'
 import './RoomsBrowse.css'
 
-const ROOMS = [
-  { id: 'exam', name: 'Exam Stress', desc: 'Boards, deadlines, the kind of tired that sleep doesn\'t fix.', emoji: '📚', active: 12, color: '#C9A84C' },
-  { id: 'city', name: 'New to a City', desc: 'Everything is unfamiliar and the loneliness hits differently.', emoji: '🌆', active: 7, color: '#7BAE7F' },
-  { id: 'habit', name: 'Quitting a Habit', desc: 'You know you want to. Some days are harder than others.', emoji: '🌀', active: 9, color: '#9B89BC' },
-  { id: 'night', name: '3am Thoughts', desc: 'For when sleep won\'t come and the mind won\'t quiet.', emoji: '🌙', active: 21, color: '#C47B7B' },
-  { id: 'body', name: 'Body Image', desc: 'Getting dressed, mirrors, comparison. All of it.', emoji: '🪞', active: 5, color: '#D4875A' },
-  { id: 'work', name: 'Work Pressure', desc: 'Deadlines, appraisals, the constant feeling of not-enough.', emoji: '💼', active: 8, color: '#7BAE7F' },
+interface RoomDefinition {
+  id: string
+  name: string
+  category: string
+  desc: string
+  active: number
+  recentActivity: string
+}
+
+const ROOMS: RoomDefinition[] = [
+  {
+    id: 'exam',
+    name: 'Academic & Exam Stress',
+    category: 'Academics',
+    desc: 'Deadlines, board exams, competitive pressure, and academic burnout.',
+    active: 14,
+    recentActivity: 'Active 2m ago',
+  },
+  {
+    id: 'city',
+    name: 'New in the City',
+    category: 'Relocation',
+    desc: 'Navigating unfamiliar surroundings, distance from home, and starting fresh.',
+    active: 8,
+    recentActivity: 'Active 5m ago',
+  },
+  {
+    id: 'habit',
+    name: 'Habit Reset & Accountability',
+    category: 'Wellness',
+    desc: 'Shared support and daily checkpoints for breaking difficult routines.',
+    active: 11,
+    recentActivity: 'Active just now',
+  },
+  {
+    id: 'night',
+    name: 'Late Night Thoughts',
+    category: 'Quiet Hours',
+    desc: 'A quiet space for when sleep is difficult and the mind is racing.',
+    active: 23,
+    recentActivity: 'Active just now',
+  },
+  {
+    id: 'body',
+    name: 'Self-Perception & Esteem',
+    category: 'Identity',
+    desc: 'Navigating comparison, body confidence, and quiet self-criticism.',
+    active: 6,
+    recentActivity: 'Active 8m ago',
+  },
+  {
+    id: 'work',
+    name: 'Career & Workplace Pressure',
+    category: 'Professional',
+    desc: 'Managing deadlines, workplace boundaries, and performance expectations.',
+    active: 9,
+    recentActivity: 'Active 4m ago',
+  },
 ]
 
 export default function RoomsBrowse() {
@@ -17,45 +67,77 @@ export default function RoomsBrowse() {
 
   return (
     <div className="rooms-page">
+      {/* Header */}
       <header className="rooms-header">
-        <button className="btn btn-ghost" onClick={() => navigate(-1)} aria-label="Go back">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M11 14L6 9l5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <h1 className="rooms-header__title font-display">Themed Rooms</h1>
-        <SOSButton />
+        <div className="rooms-header__left">
+          <button
+            className="rooms-back-btn font-mono"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            ← Back
+          </button>
+          <div className="rooms-header__titles">
+            <h1 className="rooms-header__title">Peer Discussion Groups</h1>
+            <span className="rooms-header__subtitle font-mono">Anonymous Topic Channels</span>
+          </div>
+        </div>
+
+        <div className="rooms-header__right">
+          <SOSButton />
+        </div>
       </header>
 
-      <p className="rooms-intro container font-body">
-        Instead of a 1:1 match, join a room built around a topic. Everyone's anonymous. Same rules apply.
-      </p>
-
-      <div className="rooms-grid container">
-        {ROOMS.map((room, i) => (
-          <motion.button
-            key={room.id}
-            className="room-card"
-            style={{ '--room-color': room.color } as React.CSSProperties}
-            onClick={() => navigate(`/rooms/${room.id}`)}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
-            whileHover={{ y: -4, scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="room-card__emoji">{room.emoji}</div>
-            <div className="room-card__content">
-              <h2 className="room-card__name font-display">{room.name}</h2>
-              <p className="room-card__desc font-body">{room.desc}</p>
-            </div>
-            <div className="room-card__active font-mono">
-              <span className="room-card__dot" />
-              {room.active} active
-            </div>
-          </motion.button>
-        ))}
+      {/* Hero Overview */}
+      <div className="rooms-hero container">
+        <div className="rooms-hero__badge font-mono">
+          <span className="live-beacon" />
+          <span>Real-time peer channels</span>
+        </div>
+        <h2 className="rooms-hero__heading">Select a discussion channel</h2>
+        <p className="rooms-hero__sub">
+          Join an open conversation with peers experiencing similar situations. Moderated in real-time, completely anonymous, with zero session logs retained.
+        </p>
       </div>
+
+      {/* Grid of Channels */}
+      <div className="rooms-grid-wrap container">
+        <div className="rooms-grid">
+          {ROOMS.map((room) => (
+            <div
+              key={room.id}
+              className="room-card"
+              onClick={() => navigate(`/rooms/${room.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate(`/rooms/${room.id}`)}
+            >
+              <div className="room-card__top">
+                <span className="room-card__category font-mono">{room.category}</span>
+                <span className="room-card__status font-mono">
+                  <span className="room-card__pulse" />
+                  {room.active} active
+                </span>
+              </div>
+
+              <div className="room-card__body">
+                <h3 className="room-card__title">{room.name}</h3>
+                <p className="room-card__desc">{room.desc}</p>
+              </div>
+
+              <div className="room-card__footer">
+                <span className="room-card__activity font-mono">{room.recentActivity}</span>
+                <span className="room-card__enter font-mono">Enter Space →</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer Notice */}
+      <footer className="rooms-footer container font-mono">
+        <span>Confidential • Zero Log Retention • Real-Time Safety Active</span>
+      </footer>
     </div>
   )
 }
