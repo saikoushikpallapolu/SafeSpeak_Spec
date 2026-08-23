@@ -32,17 +32,17 @@ export function detectLanguage(text: string): 'Hindi' | 'Telugu' | 'Tamil' | 'Hi
   const lower = text.toLowerCase()
 
   // Hinglish conversational markers
-  if (/\b(hai|hoon|kya|kyu|kaise|mera|meri|mujhe|bahut|karna|samjha|nahi|bohot|lag|raha|rahi|accha|shukriya|yaar|bhai|kuch|kare|karte|hum|tum|aap|batao|samajh|tension|sahi|bilkul|baat|thoda|hoga|hogi|padhai|neend|chinta|namaste|theek)\b/.test(lower)) {
+  if (/\b(hai|hoon|kya|kyu|kaise|mera|meri|mujhe|bahut|karna|samjha|nahi|bohot|lag|raha|rahi|accha|shukriya|yaar|bhai|kuch|kare|karte|hum|tum|aap|batao|samajh|tension|sahi|bilkul|baat|thoda|hoga|hogi|padhai|neend|chinta|namaste|theek|kahan|kidhar)\b/.test(lower)) {
     return 'Hinglish'
   }
 
   // Tenglish conversational markers
-  if (/\b(undi|naku|cheyali|chesthunna|ela|ippudu|koddiga|ledhu|unnanu|avunu|chala|bayam|bhayam|edupu|gunde|garu|andi|kooda|kaadhu|mari|em|enti|cheppu|ardham|kavali|baga|chusi|ravali|anipisthundi|namaskaram|bagunnanu|chetthanu)\b/.test(lower)) {
+  if (/\b(undi|naku|cheyali|chesthunna|ela|ippudu|koddiga|ledhu|unnanu|avunu|chala|bayam|bhayam|edupu|gunde|garu|andi|kooda|kaadhu|mari|em|enti|cheppu|ardham|kavali|baga|chusi|ravali|anipisthundi|namaskaram|bagunnanu|chetthanu|ekkada)\b/.test(lower)) {
     return 'Tenglish'
   }
 
   // Tanglish conversational markers
-  if (/\b(irukku|pudikala|theriyuma|panren|epdi|ippo|nalla|kitta|romba|aama|azhuga|thangika|machan|da|di|theriyala|pesa|solla|mudiyala|kavala|vanakkam|iruken)\b/.test(lower)) {
+  if (/\b(irukku|pudikala|theriyuma|panren|epdi|ippo|nalla|kitta|romba|aama|azhuga|thangika|machan|da|di|theriyala|pesa|solla|mudiyala|kavala|vanakkam|iruken|enga)\b/.test(lower)) {
     return 'Tanglish'
   }
 
@@ -65,16 +65,25 @@ interface LexiconEntry {
 const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
   // Greetings
   {
-    regex: /^(hi|hello|hey|heyy|namaste|namaskaram|vanakkam|namaskar)\b/i,
+    regex: /^(hi|hello|hey|heyy|namaste|namaskaram|vanakkam|namaskar|नमस्ते|నమస్కారం|வணக்கம்)\b/i,
     en: "Hello, greetings!",
     hi: "नमस्ते!",
     te: "నమస్కారం!",
     ta: "வணக்கம்!",
     hinglish: "Namaste / Hello!",
   },
+  // Where are you / name mentions
+  {
+    regex: /तुम\s*कहाँ\s*हो|कहाँ\s*हो|kahan\s*ho|kidhar\s*ho|ekkada\s*unnav|enga\s*irukka|where\s*are\s*you/i,
+    en: "Where are you?",
+    hi: "आप कहाँ हैं?",
+    te: "మీరు ఎక్కడ ఉన్నారు?",
+    ta: "நீங்கள் எங்கே இருக்கிறீர்கள்?",
+    hinglish: "Aap kahan ho?",
+  },
   // How are you
   {
-    regex: /\b(how are you|how r u|kaisa hai|kaise ho|aap kaise ho|ela unnav|ela unnaru|epdi irukka|epdi irukkeenga)\b/i,
+    regex: /\b(how are you|how r u|kaisa hai|kaise ho|aap kaise ho|ela unnav|ela unnaru|epdi irukka|epdi irukkeenga|आप\s*कैसे\s*हैं|ఎలా\s*ఉన్నారు)\b/i,
     en: "How are you doing?",
     hi: "आप कैसे हैं?",
     te: "మీరు ఎలా ఉన్నారు?",
@@ -83,7 +92,7 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
   },
   // What are you doing
   {
-    regex: /\b(what are you doing|what r u doing|kya kar rahe ho|kya kar rahe|em chesthunnav|em chesthunnaru|enna panra|enna panreenga)\b/i,
+    regex: /\b(what are you doing|what r u doing|kya kar rahe ho|kya kar rahe|em chesthunnav|em chesthunnaru|enna panra|enna panreenga|क्या\s*कर\s*रहे\s*हो|ఏమి\s*చేస్తున్నారు)\b/i,
     en: "What are you doing?",
     hi: "आप क्या कर रहे हैं?",
     te: "మీరు ఏమి చేస్తున్నారు?",
@@ -92,7 +101,7 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
   },
   // I am fine / doing well
   {
-    regex: /\b(i am fine|i'?m fine|doing good|fine|theek hu|mai theek hu|bagunnanu|nenu bagunnanu|nalla irukken|naan nalla irukken)\b/i,
+    regex: /\b(i am fine|i'?m fine|doing good|fine|theek hu|mai theek hu|bagunnanu|nenu bagunnanu|nalla irukken|naan nalla irukken|मैं\s*ठीक\s*हूँ|బాగున్నాను)\b/i,
     en: "I am doing fine.",
     hi: "मैं ठीक हूँ।",
     te: "నేను బాగున్నాను.",
@@ -101,7 +110,7 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
   },
   // Depressed / Sad
   {
-    regex: /\b(i am depressed|feeling depressed|feeling sad|udas lag raha|bahut sad|badha ga undi|kavalaya irukku)\b/i,
+    regex: /\b(i am depressed|feeling depressed|feeling sad|udas lag raha|bahut sad|badha ga undi|kavalaya irukku|उदासी|डिप्रेशन)\b/i,
     en: "I have been feeling quite down and depressed lately.",
     hi: "मुझे बहुत उदासी और भारीपन महसूस हो रहा है।",
     te: "నాకు చాలా బాధగా మరియు భారంగా అనిపిస్తోంది.",
@@ -110,7 +119,7 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
   },
   // Exam & Study Stress
   {
-    regex: /\b(exam stress|study pressure|boards? exam|exam ki tension|exam bayam|chala stress)\b/i,
+    regex: /\b(exam stress|study pressure|boards? exam|exam ki tension|exam bayam|chala stress|परीक्षा\s*का\s*तनाव)\b/i,
     en: "I am dealing with a lot of exam and study pressure.",
     hi: "मुझे परीक्षा और पढ़ाई का बहुत तनाव हो रहा है।",
     te: "నాకు పరీక్షలంటే చాలా ఒత్తిడిగా మరియు భయంగా ఉంది.",
@@ -123,12 +132,12 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
     en: "Everything feels so overwhelming right now, I don't know what to do.",
     hi: "सब कुछ बहुत भारी लग रहा है, मुझे समझ नहीं आ रहा कि क्या करूँ।",
     te: "ప్రతిదీ చాలా భారంగా అనిపిస్తోంది, ఏం చేయాలో అర్థం కావడం లేదు.",
-    ta: "எல்லாமே கடினமாக உள்ளது, என்ன செய்வது என்று புரியவில்லை.",
+    ta: "எல்லாமமே கடினமாக உள்ளது, என்ன செய்வது என்று புரியவில்லை.",
     hinglish: "Sab kuch bohot overwhelming lag raha hai.",
   },
   // Lonely
   {
-    regex: /\b(feeling lonely|so lonely|loneliness|akela feel ho raha|ontariga anipistondi|thaniya irukken)\b/i,
+    regex: /\b(feeling lonely|so lonely|loneliness|akela feel ho raha|ontariga anipistondi|thaniya irukken|अकेलापन)\b/i,
     en: "I have been feeling very lonely lately.",
     hi: "मुझे बहुत अकेलापन महसूस हो रहा है।",
     te: "నాకు చాలా ఒంటరిగా అనిపిస్తోంది.",
@@ -137,7 +146,7 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
   },
   // Thank you
   {
-    regex: /\b(thank you|thanks|thx|shukriya|dhanyawad|dhanyavadalu|nandri|romba nandri)\b/i,
+    regex: /\b(thank you|thanks|thx|shukriya|dhanyawad|dhanyavadalu|nandri|romba nandri|धन्यवाद|ధన్యవాదాలు|நன்றி)\b/i,
     en: "Thank you so much.",
     hi: "आपका बहुत-बहुत धन्यवाद।",
     te: "చాలా ధన్యవాదాలు.",
@@ -191,34 +200,31 @@ export async function translateMessage(
   }
   const targetCode = langCodeMap[targetLang] || 'en'
 
-  // 3. Online Dynamic API Tier (Google Translate GTX Endpoint)
+  // 3. Local Serverless Proxy Route (Runs server-side on Vercel with 0 CORS issues)
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 2000)
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetCode}&dt=t&q=${encodeURIComponent(clean)}`
-    const res = await fetch(url, { signal: controller.signal })
+    const timeoutId = setTimeout(() => controller.abort(), 3000)
+    const localUrl = `/api/translate?to=${encodeURIComponent(targetCode)}&text=${encodeURIComponent(clean)}`
+    const res = await fetch(localUrl, { signal: controller.signal })
     clearTimeout(timeoutId)
 
     if (res.ok) {
       const data = await res.json()
-      if (Array.isArray(data) && Array.isArray(data[0])) {
-        const translated = data[0].map((item: any) => item[0]).join('')
-        if (translated && translated.trim()) {
-          return {
-            originalLang: detected,
-            targetLang,
-            translatedText: translated.trim(),
-          }
+      if (data?.translatedText && data.translatedText.trim()) {
+        return {
+          originalLang: detected,
+          targetLang,
+          translatedText: data.translatedText.trim(),
         }
       }
     }
   } catch (_) {}
 
-  // 4. Online Secondary Fallback (MyMemory Free API)
+  // 4. Public MyMemory API Tier (CORS-friendly fallback)
   try {
     const controller2 = new AbortController()
-    const timeoutId2 = setTimeout(() => controller2.abort(), 2000)
-    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=autodetect|${targetCode}`
+    const timeoutId2 = setTimeout(() => controller2.abort(), 2500)
+    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=autodetect|${encodeURIComponent(targetCode)}`
     const res2 = await fetch(myMemoryUrl, { signal: controller2.signal })
     clearTimeout(timeoutId2)
 
@@ -229,6 +235,29 @@ export async function translateMessage(
           originalLang: detected,
           targetLang,
           translatedText: json.responseData.translatedText.trim(),
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 5. Direct Google Translate GTX
+  try {
+    const controller3 = new AbortController()
+    const timeoutId3 = setTimeout(() => controller3.abort(), 2000)
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetCode}&dt=t&q=${encodeURIComponent(clean)}`
+    const res3 = await fetch(url, { signal: controller3.signal })
+    clearTimeout(timeoutId3)
+
+    if (res3.ok) {
+      const data3 = await res3.json()
+      if (Array.isArray(data3) && Array.isArray(data3[0])) {
+        const translated = data3[0].map((item: any) => item[0]).join('')
+        if (translated && translated.trim()) {
+          return {
+            originalLang: detected,
+            targetLang,
+            translatedText: translated.trim(),
+          }
         }
       }
     }

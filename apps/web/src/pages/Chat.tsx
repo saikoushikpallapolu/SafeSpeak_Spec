@@ -75,18 +75,16 @@ export default function Chat() {
     }
   }, [transcript])
 
-  // Real-time dynamic translation of peer messages into activeLang
+  // Real-time dynamic translation of ALL messages into the activeLang set in header
   useEffect(() => {
     let isCancelled = false
 
-    async function translateIncoming() {
+    async function translateAll() {
       const updates: Record<string, string> = {}
       for (const m of messages) {
-        if (m.senderId !== myUserId) {
-          const res = await translateMessage(m.text, activeLang)
-          if (res.translatedText) {
-            updates[m.id] = res.translatedText
-          }
+        const res = await translateMessage(m.text, activeLang)
+        if (res.translatedText && res.translatedText.trim()) {
+          updates[m.id] = res.translatedText.trim()
         }
       }
       if (!isCancelled) {
@@ -95,15 +93,15 @@ export default function Chat() {
     }
 
     if (messages.length > 0) {
-      translateIncoming()
+      translateAll()
     }
 
     return () => {
       isCancelled = true
     }
-  }, [messages, activeLang, myUserId])
+  }, [messages, activeLang])
 
-  // Monitor all incoming messages for peer crisis expressions
+  // Monitor incoming messages for peer crisis expressions
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     if (messages.length > 0) {
@@ -513,7 +511,7 @@ export default function Chat() {
           const showOriginal = showOriginalMap[msg.id]
           const liveTranslated = dynamicTranslations[msg.id] || msg.translatedText
           const displayText = showOriginal ? msg.text : (liveTranslated || msg.text)
-          const hasTranslation = Boolean(liveTranslated && liveTranslated !== msg.text)
+          const hasTranslation = Boolean(liveTranslated && liveTranslated.trim().toLowerCase() !== msg.text.trim().toLowerCase())
 
           return (
             <motion.div
@@ -566,7 +564,7 @@ export default function Chat() {
                       className="chat-bubble-translate-toggle font-mono"
                       onClick={() => toggleOriginal(msg.id)}
                     >
-                      {showOriginal ? '• View translated' : `• Translated to ${activeLang}`}
+                      {showOriginal ? `• View translated (${activeLang})` : `• Original: "${msg.text}"`}
                     </button>
                   )}
                 </div>

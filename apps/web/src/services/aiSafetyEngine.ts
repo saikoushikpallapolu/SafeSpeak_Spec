@@ -26,18 +26,25 @@ export function normalizeText(raw: string): string {
 // 1. VIOLENCE, DEATH THREATS, BULLYING, & SLURS
 // -------------------------------------------------------------
 
-// Threats against the other user or violence
+// Threats against the other user or violence (Latin + Devanagari + Telugu + Tamil)
 const VIOLENCE_AND_THREAT_PATTERNS = [
   /want\s*to\s*kill\s*(you|u)|wanna\s*kill\s*(you|u)|going\s*to\s*kill\s*(you|u)|gonna\s*kill\s*(you|u)|will\s*kill\s*(you|u)/i,
   /kill\s*(you|u)|murder\s*(you|u)|stab\s*(you|u)|shoot\s*(you|u)|strangle\s*(you|u)|beat\s*up\s*(you|u)|punch\s*(you|u)|hurt\s*(you|u)/i,
   /die\s*(you|bitch|bastard)|go\s*die|hope\s*you\s*die|i\s*will\s*murder/i,
   /tere\s*ko\s*maar\s*dunga|tujhe\s*maar\s*dunga|ninnu\s*champestha|unnai\s*kolluven/i,
+  // Native script threats & abuse
+  /मर\s*जाना\s*चाहिए|जाकर\s*मर|मर\s*जा|तुझे\s*मार\s*दूंगा|जान\s*से\s*मार\s*दूंगा|मार\s*डालूँगा|फांसी\s*लगा\s*ले/i,
+  /చచ్చిపో|నిన్ను\s*చంపేస్తా|చంపేస్తా|చావాలి/i,
+  /சாக\s*போ|உன்னை\s*கொன்றுவிடுவேன்/i,
 ]
 
-// Slurs and severe profanity
+// Slurs and severe profanity (Latin + Devanagari + Telugu + Tamil)
 const PROHIBITED_SLURS = [
   /\b(n+[i1!e3a4]+g+g+[a4e3i1o0]+r*|n+[i1!e3a4]+g+a+|f+a+g+g?o?t?|k+i+k+e|c+h+i+n+k|c+u+n+t|b+i+t+c+h|w+h+o+r+e|s+l+u+t|r+e+t+a+r+d|f+u+c+k|a+s+s+h+o+l+e|d+i+c+k|p+u+s+s+y)\b/i,
   /\b(m+a+d+a+r+c+h+o+d|b+e+h+e+n+c+h+o+d|b+h+o+s+d+i+k+e|c+h+u+t+i+y+a|g+a+n+d+u|r+a+n+d+i|l+a+n+j+a|d+e+n+g+u|t+h+e+v+i+d+y+a|p+u+n+d+a|s+a+a+l+e|k+u+t+t+e|h+a+r+a+m+i)\b/i,
+  /मादरचोद|बहनचोद|भोसड़ीके|भोसडीके|चूतिया|गांडू|रंडी|कमीने|कुत्ते|हरामी/i,
+  /లంజ|దెంగు|ముండ|లవడా/i,
+  /தேவிடியா|புண்டா/i,
 ]
 
 // Harassment & toxic bullying
@@ -136,6 +143,10 @@ const TIER_2_CRISIS_INTENT = [
   /hang\s*myself|cut\s*myself|slit\s*my\s*wrist|overdose\s*on\s*pills|swallow\s*all\s*my\s*pills/i,
   /nobody\s*would\s*care\s*if\s*i\s*died|goodbye\s*world|goodbye\s*forever/i,
   /mar\s*jaana\s*chahta|khudkushi|jaan\s*de\s*dunga|mar\s*jaunga|chachi\s*povali|pranam\s*theesukunta|saaganum\s*pola/i,
+  // Native scripts (Devanagari, Telugu, Tamil)
+  /आत्महत्या|खुदकुशी|जान\s*दे\s*दूंगा|मरना\s*चाहता\s*हूँ|मर\s*जाऊंगा|जीने\s*का\s*कोई\s*मतलब\s*नहीं/i,
+  /ఆత్మహత్య|ప్రాణం\s*తీసుకుంటా|చనిపోవాలని\s*ఉంది/i,
+  /தற்கொலை|சாகணும்\s*போல\s*இருக்கு/i,
 ]
 
 const TIER_1_DISTRESS_INTENT = [
@@ -148,6 +159,7 @@ const TIER_1_DISTRESS_INTENT = [
   /exam\s*pressure|failing\s*my\s*exam|fear\s*of\s*failure/i,
   /burned\s*out|exhausted\s*mentally|mental\s*breakdown|breaking\s*down/i,
   /bahut\s*tension|bohot\s*stress|rona\s*aa\s*raha|ghabrahat|bayam\s*ga\s*undi|edupu\s*vasthondi|azhugaya\s*varudhu/i,
+  /बहुत\s*तनाव|डिप्रेशन|रोना\s*आ\s*रहा|घबराहट|अकेलापन/i,
 ]
 
 export function evaluateAiCrisis(text: string): CrisisTier {
