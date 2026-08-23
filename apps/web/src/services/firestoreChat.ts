@@ -102,7 +102,7 @@ export async function sendChatMessage(
   }
 
   const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  const translation = translateMessage(text, peerLanguage)
+  const translation = await translateMessage(text, peerLanguage)
 
   const msgPayload: Omit<ChatMessage, 'id'> = {
     roomId,

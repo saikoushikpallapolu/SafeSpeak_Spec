@@ -7,6 +7,7 @@ import { soundFx } from '../services/soundFx'
 import SOSButton from '../components/common/SOSButton'
 import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
 import { getOrCreateUserId } from '../services/firestoreMatching'
+import { checkModeration, checkCrisisTier } from '../services/safetyAndTranslation'
 import './Chat.css'
 
 const AVAILABLE_LANGS = [
@@ -93,7 +94,7 @@ export default function Chat() {
   useEffect(() => {
     if (moderationBlocked?.reason) {
       setActiveModWarning(moderationBlocked.reason)
-      const t = setTimeout(() => setActiveModWarning(null), 5000)
+      const t = setTimeout(() => setActiveModWarning(null), 6000)
       return () => clearTimeout(t)
     }
   }, [moderationBlocked])
@@ -105,12 +106,34 @@ export default function Chat() {
     }
   }, [reflectionSummary, navigate])
 
-  const handleSend = () => {
-    if (!input.trim()) return
-    sendMessage(input.trim())
-    soundFx.playMessageSent()
+  const handleSend = async () => {
+    const text = input.trim()
+    if (!text) return
+
+    // 1. Instant Client-Side Moderation Guard
+    const mod = checkModeration(text)
+    if (mod.verdict === 'blocked') {
+      setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited vulgar words, slurs, or harassment.')
+      soundFx.playBreathIn()
+      return // Halt immediately - do not send or clear
+    }
+
+    // 2. Instant Client-Side Crisis Guard
+    const crisis = checkCrisisTier(text)
+    if (crisis === 2) {
+      navigate('/safety/crisis')
+      return
+    }
+    if (crisis === 1) {
+      setInAppNudge(true)
+      soundFx.playBreathIn()
+    }
+
+    // 3. Dispatch message
     setInput('')
     sendTypingStop()
+    soundFx.playMessageSent()
+    await sendMessage(text)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,32 +260,44 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* Moderation Warning Toast */}
+      {/* Moderation Warning Toast with animated entrance and manual dismiss */}
       <AnimatePresence>
         {activeModWarning && (
           <motion.div
             className="chat-mod-warning font-mono"
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -25 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            exit={{ opacity: 0, y: -25 }}
             style={{
-              background: '#451a1a',
-              color: '#fca5a5',
-              borderBottom: '1px solid #7f1d1d',
-              padding: '10px 16px',
-              fontSize: '0.85rem',
+              background: '#581c1c',
+              color: '#fecaca',
+              borderBottom: '2px solid #b91c1c',
+              padding: '12px 18px',
+              fontSize: '0.88rem',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 20px rgba(185, 28, 28, 0.4)',
+              zIndex: 100,
             }}
           >
-            <span>⚠️ {activeModWarning}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.1rem' }}>🛡️</span>
+              <span><strong>Safety Notice:</strong> {activeModWarning}</span>
+            </div>
             <button
               onClick={() => setActiveModWarning(null)}
-              style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: '1rem', marginLeft: '8px' }}
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: '#fecaca',
+                cursor: 'pointer',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+              }}
             >
-              ✕
+              Dismiss
             </button>
           </motion.div>
         )}
@@ -281,7 +316,7 @@ export default function Chat() {
           const senderChar = getCharacterById(msg.senderCharacter) || (isMe ? me : other)
           const showOriginal = showOriginalMap[msg.id]
           const displayText = showOriginal ? msg.text : (msg.translatedText || msg.text)
-          const hasTranslation = msg.translatedText && msg.translatedText !== msg.text
+          const hasTranslation = Boolean(msg.translatedText && msg.translatedText !== msg.text)
 
           return (
             <motion.div

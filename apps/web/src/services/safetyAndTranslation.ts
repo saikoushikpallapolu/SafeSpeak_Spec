@@ -1,6 +1,6 @@
 import type { CharacterId, ChatMessage, CrisisTier, ModerationResult, ReflectionSummary } from '@safespeak/shared-types'
 
-// Comprehensive Slurs, Profanity, and Hate Speech patterns
+// Comprehensive Slurs, Profanity, Hate Speech, and Toxic Language patterns
 const SLUR_AND_HATE_PATTERNS = [
   /\b(n+[i1!|]+g+g+[a4e3i1o0]+r*|n+[i1!|]+g+a+|f+a+g+g?o?t?|k+i+k+e+|c+h+i+n+k+|c+u+n+t+|b+i+t+c+h+|w+h+o+r+e+|s+l+u+t+|r+e+t+a+r+d+|f+u+c+k+|a+s+s+h+o+l+e+|d+i+c+k+)\b/i,
   /\b(m+a+d+a+r+c+h+o+d+|b+e+h+e+n+c+h+o+d+|b+h+o+s+d+i+k+e+|c+h+u+t+i+y+a+|g+a+n+d+u+|r+a+n+d+i+|l+a+n+j+a|d+e+n+g+u+|t+h+e+v+i+d+y+a+|p+u+n+d+a+|s+a+a+l+e+|k+u+t+t+e+)\b/i,
@@ -71,7 +71,7 @@ export function checkModeration(text: string): ModerationResult {
       return {
         verdict: 'blocked',
         category: 'hate_speech',
-        reason: 'Message blocked: Contains prohibited profanity, slurs, or hate speech.',
+        reason: 'Message blocked: Contains prohibited profanity, slurs, or abusive language.',
       }
     }
   }
@@ -208,10 +208,10 @@ const PHRASE_DATABASE: TranslationPhrase[] = [
   },
 ]
 
-export function translateMessage(
+export async function translateMessage(
   text: string,
   targetLang: string = 'English'
-): { originalLang: string; targetLang: string; translatedText: string } {
+): Promise<{ originalLang: string; targetLang: string; translatedText: string }> {
   if (!text || !text.trim()) {
     return { originalLang: 'English', targetLang, translatedText: '' }
   }
@@ -220,15 +220,7 @@ export function translateMessage(
   const clean = text.trim()
   const lower = clean.toLowerCase()
 
-  if (
-    (targetLang === 'English' && detected === 'English') ||
-    (targetLang === 'Hindi' && detected === 'Hindi') ||
-    (targetLang === 'Telugu' && detected === 'Telugu') ||
-    (targetLang === 'Tamil' && detected === 'Tamil')
-  ) {
-    return { originalLang: detected, targetLang, translatedText: clean }
-  }
-
+  // 1. Direct matched conversational database
   for (const entry of PHRASE_DATABASE) {
     const matchesAny =
       entry.en.toLowerCase() === lower ||
@@ -248,6 +240,37 @@ export function translateMessage(
     }
   }
 
+  // 2. Map language names to codes
+  const langCodeMap: Record<string, string> = {
+    Hindi: 'hi',
+    Telugu: 'te',
+    Tamil: 'ta',
+    English: 'en',
+    Hinglish: 'hi',
+  }
+  const targetCode = langCodeMap[targetLang] || 'en'
+
+  // 3. Online dynamic translation (Free Google GTX endpoint for arbitrary text)
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 2000)
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetCode}&dt=t&q=${encodeURIComponent(clean)}`
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeoutId)
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const translated = data[0].map((item: any) => item[0]).join('')
+        if (translated && translated.trim()) {
+          return { originalLang: detected, targetLang, translatedText: translated.trim() }
+        }
+      }
+    }
+  } catch (_) {
+    // Fallback to offline rule dictionary below
+  }
+
+  // 4. Offline rule-based fallbacks
   if (detected === 'Hinglish' || detected === 'Hindi') {
     if (targetLang === 'English') {
       let en = clean
