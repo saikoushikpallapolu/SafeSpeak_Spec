@@ -1,20 +1,20 @@
 import type { CharacterId, ChatMessage, CrisisTier, ModerationResult, ReflectionSummary } from '@safespeak/shared-types'
-import { evaluateAiSafety, evaluateAiCrisis } from './aiSafetyEngine'
+import { evaluateComprehensiveSafety, evaluateAiSafety, evaluateAiCrisis } from './aiSafetyEngine'
 
 // ---------------------------------------------------------------------------
 // 1. CRISIS & EMERGENCY EVALUATION (Rule-Based & Semantic)
 // ---------------------------------------------------------------------------
 
-export function checkCrisisTier(text: string): CrisisTier {
-  return evaluateAiCrisis(text)
+export function checkCrisisTier(text: string, recentHistory: string[] = []): CrisisTier {
+  return evaluateComprehensiveSafety(text, recentHistory).crisisTier
 }
 
 // ---------------------------------------------------------------------------
 // 2. MODERATION & SAFETY FILTER (Bullying, Abusive Language, False Medical Advice)
 // ---------------------------------------------------------------------------
 
-export function checkModeration(text: string): ModerationResult {
-  return evaluateAiSafety(text)
+export function checkModeration(text: string, recentHistory: string[] = []): ModerationResult {
+  return evaluateComprehensiveSafety(text, recentHistory).moderation
 }
 
 // ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ export function detectLanguage(text: string): 'Hindi' | 'Telugu' | 'Tamil' | 'Hi
   const lower = text.toLowerCase()
 
   // Hinglish conversational markers
-  if (/\b(hai|hoon|kya|kyu|kaise|mera|meri|mujhe|bahut|karna|samjha|nahi|bohot|lag|raha|rahi|accha|shukriya|yaar|bhai|kuch|kare|karte|hum|tum|aap|batao|samajh|tension|sahi|bilkul|baat|thoda|hoga|hogi|padhai|neend|chinta|namaste|theek|kahan|kidhar)\b/.test(lower)) {
+  if (/\b(hai|hoon|kya|kyu|kaise|mera|meri|mujhe|bahut|karna|samjha|nahi|bohot|lag|raha|rahi|accha|shukriya|yaar|bhai|kuch|kare|karte|hum|tum|aap|batao|samajh|tension|sahi|bilkul|baat|thoda|hoga|hogi|padhai|neend|chinta|namaste|theek|kahan|kidhar|dil)\b/.test(lower)) {
     return 'Hinglish'
   }
 
@@ -71,6 +71,24 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
     te: "నమస్కారం!",
     ta: "வணக்கம்!",
     hinglish: "Namaste / Hello!",
+  },
+  // Idiom: "dil nahi lag raha kisi kaam mein" (Case 26)
+  {
+    regex: /dil\s+nahi\s+lag\s+raha(\s+kisi\s+kaam\s+mein)?|मन\s*नहीं\s*लग\s*रहा/i,
+    en: "I can't seem to focus or feel engaged in anything right now.",
+    hi: "मेरा किसी काम में मन नहीं लग रहा है।",
+    te: "నాకు దేనిమీదా ఆసక్తి కలగడం లేదు.",
+    ta: "எனக்கு எதிலும் கவனம் செலுத்த முடியவில்லை.",
+    hinglish: "Mera kisi kaam me dil nahi lag raha.",
+  },
+  // Intensity preservation: "I feel a little low" (Case 25)
+  {
+    regex: /i\s+feel\s+a\s+little\s+low|thoda\s+low\s+feel\s+ho\s+raha|feeling\s+slightly\s+down/i,
+    en: "I am feeling a little low today.",
+    hi: "मुझे आज थोड़ा उदास लग रहा है।",
+    te: "ఈరోజు నాకు కొంచెం డల్ గా ఉంది.",
+    ta: "இன்று எனக்கு கொஞ்சம் சோர்வாக உள்ளது.",
+    hinglish: "Mujhe thoda low feel ho raha hai.",
   },
   // Where are you / name mentions
   {
@@ -132,7 +150,7 @@ const CONVERSATIONAL_LEXICON: LexiconEntry[] = [
     en: "Everything feels so overwhelming right now, I don't know what to do.",
     hi: "सब कुछ बहुत भारी लग रहा है, मुझे समझ नहीं आ रहा कि क्या करूँ।",
     te: "ప్రతిదీ చాలా భారంగా అనిపిస్తోంది, ఏం చేయాలో అర్థం కావడం లేదు.",
-    ta: "எல்லாமமே கடினமாக உள்ளது, என்ன செய்வது என்று புரியவில்லை.",
+    ta: "எல்லாமே கடினமாக உள்ளது, என்ன செய்வது என்று புரியவில்லை.",
     hinglish: "Sab kuch bohot overwhelming lag raha hai.",
   },
   // Lonely
