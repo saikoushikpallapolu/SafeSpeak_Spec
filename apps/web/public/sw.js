@@ -1,5 +1,5 @@
-// SafeSpeak Service Worker for Offline & Shell Caching
-const CACHE_NAME = 'safespeak-cache-v1'
+// SafeSpeak Service Worker (Network-First Strategy for Instant Deployment Updates)
+const CACHE_NAME = 'safespeak-cache-v3'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,10 +8,11 @@ const STATIC_ASSETS = [
 ]
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting()
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS)
-    }).then(() => self.skipWaiting())
+    })
   )
 })
 
@@ -19,34 +20,44 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key)
+          }
+        })
       )
     }).then(() => self.clients.claim())
   )
 })
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests, bypass API & socket endpoints
+  // Only handle GET requests, bypass API & socket endpoints
   if (event.request.method !== 'GET' || event.request.url.includes('/socket.io') || event.request.url.includes('/api/')) {
     return
   }
 
+  // Network First: Always try to get the latest fresh version from server/Vercel
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone()
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone)
+          })
         }
-        const toCache = response.clone()
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, toCache)
-        })
-        return response
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html')
-        }
+        return networkResponse
       })
-    })
+      .catch(() => {
+        // Fallback to cache if offline
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse
+          }
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html')
+          }
+        })
+      })
   )
 })
