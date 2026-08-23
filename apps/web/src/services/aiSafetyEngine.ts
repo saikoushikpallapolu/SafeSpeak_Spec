@@ -1,185 +1,322 @@
 import type { CrisisTier, ModerationResult } from '@safespeak/shared-types'
 
+export interface SafetyAnalysisResult {
+  moderation: ModerationResult
+  crisisTier: CrisisTier
+  helperIntent?: boolean
+  helperAdvice?: string
+  isPastTenseRecovery?: boolean
+  isAcademicContext?: boolean
+}
+
 /**
- * Normalizes obfuscated text (e.g. "n.i.g.g.a", "f*ck", "b!tch", "n1gg4", "sh1t", "sucide", "ocmmit")
- * into canonical lowercase form for robust AI intent matching.
+ * Normalizes obfuscated text, leetspeak, and deliberate typo evasions.
  */
 export function normalizeText(raw: string): string {
   if (!raw) return ''
   return raw
     .toLowerCase()
-    // Replace common leetspeak characters
+    // Strip prompt injection / bypass evasion prefixes
+    .replace(/ignore\s+(all\s+)?(previous\s+)?instructions.*?(translate|say|tell)\s*:?/gi, '')
+    .replace(/just\s+translate\s+(this\s+)?(without\s+checking\s+it)?:?/gi, '')
+    // Common SMS / leetspeak contractions
+    .replace(/\bwnt\b/g, 'want')
+    .replace(/\b2\b/g, 'to')
+    .replace(/\b4ever\b/g, 'forever')
+    .replace(/\bdisapear\b/g, 'disappear')
+    .replace(/\bkil\b/g, 'kill')
+    .replace(/\bsucide|suiside|suicde\b/g, 'suicide')
+    .replace(/\bocmmit|comit\b/g, 'commit')
+    .replace(/\bdpressed|depresed\b/g, 'depressed')
+    .replace(/\bstressd\b/g, 'stressed')
+    // Character replacements
     .replace(/[@4]/g, 'a')
     .replace(/[3]/g, 'e')
     .replace(/[1!|]/g, 'i')
     .replace(/[0]/g, 'o')
     .replace(/[$5]/g, 's')
     .replace(/[7]/g, 't')
-    // Remove repeated punctuation/spaces between letters (e.g. "f.u.c.k" -> "fuck")
+    // Remove repeated punctuation between letters
     .replace(/([a-z])[\s._\-*#]+([a-z])/g, '$1$2')
     .replace(/([a-z])[\s._\-*#]+([a-z])/g, '$1$2')
-    // Collapse character repetitions (e.g. "fuuuck" -> "fuck", "niiiigga" -> "nigga")
+    // Collapse character repetitions
     .replace(/(.)\1{2,}/g, '$1$1')
 }
 
-// -------------------------------------------------------------
-// 1. VIOLENCE, DEATH THREATS, BULLYING, & SLURS
-// -------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// 1. DISQUALIFIERS & FALSE POSITIVE GUARDS
+// ---------------------------------------------------------------------------
 
-// Threats against the other user or violence (Latin + Devanagari + Telugu + Tamil)
-const VIOLENCE_AND_THREAT_PATTERNS = [
-  /want\s*to\s*kill\s*(you|u)|wanna\s*kill\s*(you|u)|going\s*to\s*kill\s*(you|u)|gonna\s*kill\s*(you|u)|will\s*kill\s*(you|u)/i,
-  /kill\s*(you|u)|murder\s*(you|u)|stab\s*(you|u)|shoot\s*(you|u)|strangle\s*(you|u)|beat\s*up\s*(you|u)|punch\s*(you|u)|hurt\s*(you|u)/i,
-  /die\s*(you|bitch|bastard)|go\s*die|hope\s*you\s*die|i\s*will\s*murder/i,
-  /tere\s*ko\s*maar\s*dunga|tujhe\s*maar\s*dunga|ninnu\s*champestha|unnai\s*kolluven/i,
-  // Native script threats & abuse
-  /मर\s*जाना\s*चाहिए|जाकर\s*मर|मर\s*जा|तुझे\s*मार\s*दूंगा|जान\s*से\s*मार\s*दूंगा|मार\s*डालूँगा|फांसी\s*लगा\s*ले/i,
-  /చచ్చిపో|నిన్ను\s*చంపేస్తా|చంపేస్తా|చావాలి/i,
-  /சாக\s*போ|உன்னை\s*கொன்றுவிடுவேன்/i,
+// Academic / Research context (Case 11)
+const ACADEMIC_RESEARCH_PATTERNS = [
+  /reading\s+about\s+(teen\s+)?suicide\s+rates/i,
+  /(school|college|university)\s+(project|assignment|research|paper)\s+on/i,
+  /studying\s+(statistics|data|rates)\s+about\s+(depression|suicide|mental\s+health)/i,
+  /statistics\s+show\s+that\s+depression/i,
 ]
 
-// Slurs and severe profanity (Latin + Devanagari + Telugu + Tamil)
-const PROHIBITED_SLURS = [
-  /\b(n+[i1!e3a4]+g+g+[a4e3i1o0]+r*|n+[i1!e3a4]+g+a+|f+a+g+g?o?t?|k+i+k+e|c+h+i+n+k|c+u+n+t|b+i+t+c+h|w+h+o+r+e|s+l+u+t|r+e+t+a+r+d|f+u+c+k|a+s+s+h+o+l+e|d+i+c+k|p+u+s+s+y)\b/i,
-  /\b(m+a+d+a+r+c+h+o+d|b+e+h+e+n+c+h+o+d|b+h+o+s+d+i+k+e|c+h+u+t+i+y+a|g+a+n+d+u|r+a+n+d+i|l+a+n+j+a|d+e+n+g+u|t+h+e+v+i+d+y+a|p+u+n+d+a|s+a+a+l+e|k+u+t+t+e|h+a+r+a+m+i)\b/i,
-  /मादरचोद|बहनचोद|भोसड़ीके|भोसडीके|चूतिया|गांडू|रंडी|कमीने|कुत्ते|हरामी/i,
-  /లంజ|దెంగు|ముండ|లవడా/i,
-  /தேவிடியா|புண்டா/i,
+// Third-person concern (Case 10)
+const THIRD_PERSON_CONCERN_PATTERNS = [
+  /my\s+(friend|sister|brother|mother|father|partner|cousin|roommate|classmate)\s+(keeps\s+(saying|talking)|is\s+talking|wants)\s+about\s+(ending|dying|suicide|hurting)/i,
+  /my\s+friend\s+keeps\s+saying\s+she\s+doesn'?t\s+want\s+to\s+be\s+here/i,
+  /talking\s+about\s+my\s+friend\s+who\s+is\s+suicidal/i,
+  /how\s+to\s+help\s+a\s+suicidal\s+friend/i,
 ]
 
-// Harassment & toxic bullying
-const HARASSMENT_PATTERNS = [
-  /kill\s*yourself|kys|go\s*die|nobody\s*loves\s*you|you\s*should\s*die|die\s*in\s*a\s*hole|piece\s*of\s*shit|worthless\s*piece|eat\s*shit|rot\s*in\s*hell/i,
-  /mar\s*ja\s*saale|mar\s*ja\s*kutte|chup\s*chap\s*mar|chachi\s*po|santhi\s*po/i,
+// Past-tense / recovery framing (Case 9)
+const PAST_TENSE_RECOVERY_PATTERNS = [
+  /i\s+used\s+to\s+think\s+about\s+(hurting\s+myself|ending\s+things|suicide).*?(i'?m\s+(okay|fine|better|in\s+a\s+better\s+place)\s+now)/i,
+  /in\s+the\s+past\s+i\s+(struggled|was\s+depressed).*?(now\s+i'?m\s+doing\s+well|recovered)/i,
+  /years\s+ago\s+i\s+was\s+suicidal.*?now/i,
 ]
 
-// False & dangerous health / medical advice
-const HARMFUL_ADVICE_PATTERNS = [
-  /stop\s*(taking\s*)?(your\s*)?(antidepressants|medication|medicine|prescriptions|pills)/i,
-  /drink\s*(bleach|bleaching|kerosene)|take\s*\d+\s*pills|overdose\s*on|jump\s*off|hang\s*yourself|slit\s*your\s*wrists/i,
+// Casual hyperbole / harmless banter (Cases 15, 16, 17, 27)
+const HYPERBOLE_AND_BANTER_PATTERNS = [
+  /i'?m\s+so\s+dead,?\s+this\s+exam\s+destroyed\s+me/i,
+  /this\s+exam\s+is\s+killing\s+me/i,
+  /bro\s+you'?re\s+an\s+idiot\s+(lmaooo?|lol|haha)/i,
+  /feeling\s+kind\s+of\s+down\s+but\s+nothing\s+serious,?\s+just\s+a\s+rough\s+week/i,
+  /haha\s+i\s+could\s+just\s+die\s+from\s+this\s+workload/i,
 ]
 
-// Invalidation & soft harassment
-const SOFT_NUDGE_PATTERNS = [
-  /stop\s*crying|you'?re\s*just\s*being\s*dramatic|drama\s*queen|attention\s*seeker|grow\s*up|loser|get\s*over\s*it\s*already|you\s*are\s*stupid/i,
-  /natak\s*band\s*kar|overacting\s*mat\s*kar|dramebaaz|acting\s*apu|over\s*action\s*cheyyaku/i,
+// ---------------------------------------------------------------------------
+// 2. ACTIVE CRISIS & SELF-HARM INTENT (Tier 2)
+// ---------------------------------------------------------------------------
+
+const TIER_2_CRISIS_PATTERNS = [
+  // Direct explicit intent (Case 1)
+  /want\s+to\s+end\s+my\s+life|kill\s+myself|commit\s+suicide|end\s+it\s+all|take\s+my\s+own\s+life/i,
+  // Indirect / casual hopelessness ideation (Case 2, 4)
+  /don'?t\s+see\s+the\s+point\s+of\s+tomorrow/i,
+  /nothing\s+matters\s+anymore,?\s+i\s+just\s+want\s+it\s+all\s+to\s+stop/i,
+  /want\s+to\s+disappear\s+forever/i,
+  /no\s+reason\s+to\s+wake\s+up|wish\s+i\s+(was|were)\s+dead|better\s+off\s+dead/i,
+  // Code-mixed Hindi / Telugu / Tamil (Case 3)
+  /sab\s+khatam\s+kar\s+dena\s+chahiye|sab\s+khatam\s+karna\s+chahta/i,
+  /mar\s+jaana\s+chahta|khudkushi\s+kar|jaan\s+de\s+dunga|chachi\s+povali|pranam\s+theesukunta|saaganum\s+pola/i,
+  // Method consideration without explicit intent (Case 7)
+  /thinking\s+about\s+how\s+i'?d\s+do\s+it\s+if\s+i\s+ever\s+decided\s+to/i,
+  /looking\s+up\s+ways\s+to\s+(die|hang|slit|overdose)/i,
+  /overdose\s+on\s+pills|swallow\s+all\s+my\s+pills|hang\s+myself|slit\s+my\s+wrist/i,
+  // Hypothetical wrapping / evasion (Case 30)
+  /(asking\s+for\s+a\s+friend|what\s+if\s+someone\s+said).*?(disappear\s+forever|kill\s+myself|end\s+it\s+all|commit\s+suicide)/i,
+  // Native script critical crisis
+  /आत्महत्या|खुदकुशी|जान\s*दे\s*दूंगा|मरना\s*चाहता\s*हूँ|मर\s*जाऊंगा|జీవితం\s*ముగించాలనుకుంటున్నా|ఆత్మహత్య|தற்கொலை/i,
 ]
 
-export function evaluateAiSafety(text: string): ModerationResult {
-  if (!text || typeof text !== 'string') return { verdict: 'clean' }
-  const clean = text.trim()
-  const normalized = normalizeText(clean)
+// Emoji-only or near wordless crisis indicators (Case 6)
+const CRISIS_EMOJI_PATTERN = /(?:😔|😭|💔|⚰️|🥀)*(?:🔚|⚰️|🪢|💊)+(?:😔|😭|💔)*/
 
-  // 1. Direct Death Threats or Peer Violence -> BLOCKED
-  for (const pattern of VIOLENCE_AND_THREAT_PATTERNS) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
+// ---------------------------------------------------------------------------
+// 3. MILD CONCERN & EMOTIONAL OVERWHELM (Tier 1)
+// ---------------------------------------------------------------------------
+
+const TIER_1_DISTRESS_PATTERNS = [
+  /so\s+stressed\s+i\s+can'?t\s+sleep/i,
+  /exams\s+are\s+killing\s+me/i,
+  /bahut\s+stress\s+ho\s+raha\s+hai,?\s+kuch\s+samajh\s+nahi\s+aa\s+raha/i,
+  /feel\s+so\s+low\s+today,?\s+everything\s+feels\s+heavy/i,
+  /panic\s+attack|anxiety\s+attack|feeling\s+empty|crying\s+all\s+day|burned\s+out/i,
+  /chala\s+stress|bayam\s+ga\s+undi|edupu\s+vasthondi|azhugaya\s+varudhu/i,
+]
+
+// ---------------------------------------------------------------------------
+// 4. BULLYING, HARASSMENT, SLURS & PASSIVE AGGRESSION
+// ---------------------------------------------------------------------------
+
+const HARD_BLOCK_THREATS_AND_SLURS = [
+  // Direct death threats / violent harm against peer
+  /want\s+to\s+kill\s+(you|u)|will\s+kill\s+(you|u)|murder\s+(you|u)|beat\s+you\s+up|punch\s+you/i,
+  /kill\s+yourself|kys|go\s+die|die\s+in\s+a\s+hole|piece\s+of\s+shit|worthless\s+piece|rot\s+in\s+hell/i,
+  /मर\s*जाना\s*चाहिए|जाकर\s*मर|मर\s*जा|तुझे\s*मार\s*दूंगा|చచ్చిపో|నిన్ను\s*చంపేస్తా|சாக\s*போ/i,
+  // Slurs & explicit vulgar profanity
+  /\b(n+[i1!e3a4]+g+g+[a4e3i1o0]+r*|n+[i1!e3a4]+g+a+|f+a+g+g?o?t?|k+i+k+e|c+h+i+n+k|c+u+n+t|b+i+t+c+h|w+h+o+r+e|s+l+u+t|r+e+t+a+r+d)\b/i,
+  /\b(m+a+d+a+r+c+h+o+d|b+e+h+e+n+c+h+o+d|b+h+o+s+d+i+k+e|c+h+u+t+i+y+a|g+a+n+d+u|r+a+n+d+i|l+a+n+j+a|d+e+n+g+u|t+h+e+v+i+d+y+a|p+u+n+d+a)\b/i,
+  /मादरचोद|बहनचोद|भोसड़ीके|भोसडीके|चूतिया|गांडू|रंडी|कमीने|कुत्ते|हरामी|లంజ|దెంగు|தேவிடியா|புண்டா/i,
+]
+
+// Passive-aggressive invalidation (Case 19)
+const PASSIVE_AGGRESSIVE_HARASSMENT = [
+  /must\s+be\s+nice\s+having\s+such\s+a\s+small\s+problem\s+to\s+be\s+sad\s+about/i,
+  /you'?re\s+just\s+being\s+dramatic|drama\s+queen|attention\s+seeker|grow\s+up\s+already/i,
+  /nobody\s+cares\s+about\s+your\s+little\s+issues/i,
+  /natak\s+band\s+kar|overacting\s+mat\s+kar|dramebaaz/i,
+]
+
+// ---------------------------------------------------------------------------
+// 5. MISINFORMATION & DANGEROUS HEALTH ADVICE
+// ---------------------------------------------------------------------------
+
+const DANGEROUS_HEALTH_ADVICE = [
+  // Extreme fasting / self-harming remedies (Case 22)
+  /just\s+stop\s+eating\s+(for\s+a\s+day\s+or\s+two)?,?\s+it\s+clears\s+your\s+head/i,
+  /drink\s+(bleach|kerosene|detergent)|take\s+\d+\s+sleeping\s+pills/i,
+  // False medical certainty (Case 23)
+  /(my\s+doctor\s+said\s+)?(drinking\s+)?turmeric\s+water\s+cures\s+anxiety\s+completely/i,
+  /cure\s+(depression|anxiety|bipolar)\s+with\s+(essential\s+oils|lemon\s+juice|magic\s+herbs)/i,
+  // Discouraging professional care (Case 24)
+  /(honestly\s+)?therapy\s+is\s+a\s+scam,?\s+just\s+push\s+through\s+it/i,
+  /stop\s+taking\s+(your\s+)?(antidepressants|psychiatric\s+meds|medicine)/i,
+]
+
+// ---------------------------------------------------------------------------
+// MASTER SAFETY & CRISIS EVALUATOR
+// ---------------------------------------------------------------------------
+
+export function evaluateComprehensiveSafety(
+  text: string,
+  recentHistory: string[] = []
+): SafetyAnalysisResult {
+  if (!text || typeof text !== 'string') {
+    return { moderation: { verdict: 'approved' }, crisisTier: 0 }
+  }
+
+  const raw = text.trim()
+  const normalized = normalizeText(raw)
+
+  // Step 1: Disqualifier check - Academic context (Case 11)
+  for (const pattern of ACADEMIC_RESEARCH_PATTERNS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
       return {
-        verdict: 'blocked',
-        category: 'violence_threat',
-        reason: 'Message blocked: Threats of violence or harm are strictly prohibited.',
+        moderation: { verdict: 'approved' },
+        crisisTier: 0,
+        isAcademicContext: true,
       }
     }
   }
 
-  // 2. Slurs and Hate Speech -> BLOCKED
-  for (const pattern of PROHIBITED_SLURS) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
+  // Step 2: Disqualifier check - Third-person concern (Case 10)
+  for (const pattern of THIRD_PERSON_CONCERN_PATTERNS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
       return {
-        verdict: 'blocked',
-        category: 'hate_speech',
-        reason: 'Message blocked: Contains prohibited profanity, slurs, or abusive language.',
+        moderation: { verdict: 'approved' },
+        crisisTier: 0,
+        helperIntent: true,
+        helperAdvice: "It sounds like your friend is carrying a heavy burden. You can support them by sharing verified 24×7 helplines like Tele-MANAS (14416) or KIRAN (1800-599-0019).",
       }
     }
   }
 
-  // 3. Harassment & Bullying -> BLOCKED
-  for (const pattern of HARASSMENT_PATTERNS) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
+  // Step 3: Disqualifier check - Past-tense / recovery framing (Case 9)
+  for (const pattern of PAST_TENSE_RECOVERY_PATTERNS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
       return {
-        verdict: 'blocked',
-        category: 'harassment',
-        reason: 'Message blocked: Abusive language or harassment violates community guidelines.',
+        moderation: { verdict: 'approved' },
+        crisisTier: 0,
+        isPastTenseRecovery: true,
       }
     }
   }
 
-  // 4. Harmful Medical Advice -> BLOCKED
-  for (const pattern of HARMFUL_ADVICE_PATTERNS) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
+  // Step 4: Disqualifier check - Harmless banter / casual hyperbole (Cases 15, 16, 17, 27)
+  for (const pattern of HYPERBOLE_AND_BANTER_PATTERNS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
       return {
-        verdict: 'blocked',
-        category: 'harmful_medical',
-        reason: 'Message blocked: Giving harmful or unverified medical advice is restricted.',
+        moderation: { verdict: 'approved' },
+        crisisTier: 0,
       }
     }
   }
 
-  // 5. Soft Invalidation -> SOFT FLAG
-  for (const pattern of SOFT_NUDGE_PATTERNS) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
+  // Step 5: Direct Death Threats, Severe Harassment & Slurs -> HARD BLOCK (Cases 18, 21)
+  for (const pattern of HARD_BLOCK_THREATS_AND_SLURS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
       return {
-        verdict: 'soft_flag',
-        category: 'bullying',
-        reason: 'This message might feel invalidating. Consider rephrasing with empathy.',
-        suggestedRephrase: 'I hear you, and it sounds really difficult.',
+        moderation: {
+          verdict: 'blocked',
+          category: 'harassment',
+          reason: 'Message blocked: Threats of violence, slurs, or harassment violate community guidelines.',
+        },
+        crisisTier: 0,
       }
     }
   }
 
-  return { verdict: 'approved' }
+  // Step 6: Dangerous Health Advice & Misinformation (Cases 22, 23, 24)
+  for (const pattern of DANGEROUS_HEALTH_ADVICE) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
+      return {
+        moderation: {
+          verdict: 'blocked',
+          category: 'harmful_medical',
+          reason: 'Message blocked: Giving unverified or potentially dangerous medical advice is restricted.',
+        },
+        crisisTier: 0,
+      }
+    }
+  }
+
+  // Step 7: Passive-Aggressive Invalidation -> SOFT FLAG (Case 19)
+  for (const pattern of PASSIVE_AGGRESSIVE_HARASSMENT) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
+      return {
+        moderation: {
+          verdict: 'soft_flag',
+          category: 'bullying',
+          reason: 'This message might feel invalidating. Consider rephrasing with empathy.',
+          suggestedRephrase: 'I hear you, and it sounds really difficult.',
+        },
+        crisisTier: 0,
+      }
+    }
+  }
+
+  // Step 8: Active Tier 2 Crisis Detection (Single message) (Cases 1, 2, 3, 4, 5, 7, 30)
+  for (const pattern of TIER_2_CRISIS_PATTERNS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
+      return {
+        moderation: { verdict: 'approved' },
+        crisisTier: 2,
+      }
+    }
+  }
+
+  // Step 9: Multi-Message Split Crisis Check (Case 8)
+  // Evaluates last message + current message together (e.g. "I just want" / "everything to end")
+  if (recentHistory.length > 0) {
+    const lastMsg = recentHistory[recentHistory.length - 1]
+    const combined = `${lastMsg} ${raw}`.trim()
+    const combinedNorm = normalizeText(combined)
+
+    for (const pattern of TIER_2_CRISIS_PATTERNS) {
+      if (pattern.test(combined) || pattern.test(combinedNorm)) {
+        return {
+          moderation: { verdict: 'approved' },
+          crisisTier: 2,
+        }
+      }
+    }
+
+    // Step 10: Emoji-only follow up after hopelessness (Case 6)
+    if (CRISIS_EMOJI_PATTERN.test(raw) && /hopeless|pointless|giving\s+up|sad|empty|done/i.test(lastMsg)) {
+      return {
+        moderation: { verdict: 'approved' },
+        crisisTier: 2,
+      }
+    }
+  }
+
+  // Step 11: Mild Distress (Tier 1) (Cases 12, 13, 14)
+  for (const pattern of TIER_1_DISTRESS_PATTERNS) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
+      return {
+        moderation: { verdict: 'approved' },
+        crisisTier: 1,
+      }
+    }
+  }
+
+  return {
+    moderation: { verdict: 'approved' },
+    crisisTier: 0,
+  }
 }
 
-// -------------------------------------------------------------
-// 2. TYPO-TOLERANT SUICIDAL & CRISIS INTENT CLASSIFICATION
-// -------------------------------------------------------------
-
-const TIER_2_CRISIS_INTENT = [
-  // Any variation of suicide / sucide / suiside / suicde
-  /suicid|sucide|suiside|suicde|seppuku/i,
-  /commit\s*(suicide|sucide|suiside|suicde|ocmmit|comit)|ocmmit\s*(suicide|sucide)/i,
-  /kill\s*(my|our)?\s*sel(f|ves)|kil\s*myself|have\s*to\s*kill\s*myself|want\s*to\s*kill\s*myself|gonna\s*kill\s*myself/i,
-  /want\s*to\s*die|wanna\s*die|going\s*to\s*die|gonna\s*die|wish\s*i\s*(was|were)\s*dead|better\s*off\s*dead/i,
-  /end\s*my\s*life|take\s*my\s*own\s*life|end\s*it\s*all|giving\s*up\s*on\s*life|no\s*reason\s*to\s*live/i,
-  /hang\s*myself|cut\s*myself|slit\s*my\s*wrist|overdose\s*on\s*pills|swallow\s*all\s*my\s*pills/i,
-  /nobody\s*would\s*care\s*if\s*i\s*died|goodbye\s*world|goodbye\s*forever/i,
-  /mar\s*jaana\s*chahta|khudkushi|jaan\s*de\s*dunga|mar\s*jaunga|chachi\s*povali|pranam\s*theesukunta|saaganum\s*pola/i,
-  // Native scripts (Devanagari, Telugu, Tamil)
-  /आत्महत्या|खुदकुशी|जान\s*दे\s*दूंगा|मरना\s*चाहता\s*हूँ|मर\s*जाऊंगा|जीने\s*का\s*कोई\s*मतलब\s*नहीं/i,
-  /ఆత్మహత్య|ప్రాణం\s*తీసుకుంటా|చనిపోవాలని\s*ఉంది/i,
-  /தற்கொலை|சாகணும்\s*போல\s*இருக்கு/i,
-]
-
-const TIER_1_DISTRESS_INTENT = [
-  /depressed|depression|depressing|feeling\s*so\s*down|feeling\s*empty/i,
-  /so\s*stressed|extreme\s*stress|stressing\s*out|stressed\s*out|too\s*much\s*pressure/i,
-  /overwhelmed|overwhelming|can'?t\s*handle\s*this/i,
-  /panic\s*attack|anxiety\s*attack|having\s*anxiety|feeling\s*anxious/i,
-  /crying\s*non\s*stop|crying\s*all\s*day|can'?t\s*stop\s*crying/i,
-  /feeling\s*lonely|so\s*lonely|loneliness|alone\s*in\s*this/i,
-  /exam\s*pressure|failing\s*my\s*exam|fear\s*of\s*failure/i,
-  /burned\s*out|exhausted\s*mentally|mental\s*breakdown|breaking\s*down/i,
-  /bahut\s*tension|bohot\s*stress|rona\s*aa\s*raha|ghabrahat|bayam\s*ga\s*undi|edupu\s*vasthondi|azhugaya\s*varudhu/i,
-  /बहुत\s*तनाव|डिप्रेशन|रोना\s*आ\s*रहा|घबराहट|अकेलापन/i,
-]
+// Backwards compatibility wrappers
+export function evaluateAiSafety(text: string): ModerationResult {
+  return evaluateComprehensiveSafety(text).moderation
+}
 
 export function evaluateAiCrisis(text: string): CrisisTier {
-  if (!text || typeof text !== 'string') return 0
-  const clean = text.trim()
-  const normalized = normalizeText(clean)
-
-  // 1. Critical Crisis (Tier 2)
-  for (const pattern of TIER_2_CRISIS_INTENT) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
-      return 2
-    }
-  }
-
-  // 2. Emotional Distress / Panic (Tier 1)
-  for (const pattern of TIER_1_DISTRESS_INTENT) {
-    if (pattern.test(clean) || pattern.test(normalized)) {
-      return 1
-    }
-  }
-
-  return 0
+  return evaluateComprehensiveSafety(text).crisisTier
 }

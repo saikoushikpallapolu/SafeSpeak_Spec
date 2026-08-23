@@ -7,7 +7,8 @@ import { soundFx } from '../services/soundFx'
 import SOSButton from '../components/common/SOSButton'
 import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
 import { getOrCreateUserId } from '../services/firestoreMatching'
-import { checkModeration, checkCrisisTier, translateMessage } from '../services/safetyAndTranslation'
+import { translateMessage } from '../services/safetyAndTranslation'
+import { evaluateComprehensiveSafety } from '../services/aiSafetyEngine'
 import './Chat.css'
 
 const AVAILABLE_LANGS = [
@@ -47,6 +48,7 @@ export default function Chat() {
   const [activeModWarning, setActiveModWarning] = useState<string | null>(null)
   const [peerCrisisAlert, setPeerCrisisAlert] = useState<string | null>(null)
   const [selfCrisisBanner, setSelfCrisisBanner] = useState(false)
+  const [helperAdviceNotice, setHelperAdviceNotice] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { isRecording, transcript, startListening, stopListening, speakText } = useSpeechVoice()
@@ -110,8 +112,8 @@ export default function Chat() {
         soundFx.playMessageReceived()
 
         // Check if peer expressed thoughts of suicide or severe self-harm
-        const peerCrisis = checkCrisisTier(last.text)
-        if (peerCrisis === 2) {
+        const analysis = evaluateComprehensiveSafety(last.text)
+        if (analysis.crisisTier === 2) {
           setPeerCrisisAlert('Your conversation partner is expressing severe distress or thoughts of self-harm.')
         }
       }
@@ -153,27 +155,41 @@ export default function Chat() {
     const text = input.trim()
     if (!text) return
 
-    // 1. Instant Client-Side Moderation Guard (Threats, Violence, Slurs, Harassment, Toxic abuse)
-    const mod = checkModeration(text)
-    if (mod.verdict === 'blocked') {
-      setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited language, threats, or harassment.')
+    // Pass last 3 message texts as history context for multi-message evaluation
+    const recentHistory = messages.slice(-3).map(m => m.text)
+    const analysis = evaluateComprehensiveSafety(text, recentHistory)
+
+    // 1. Hard Moderation Block (Harassment, Violence, Slurs, Dangerous Health Advice)
+    if (analysis.moderation.verdict === 'blocked') {
+      setActiveModWarning(analysis.moderation.reason || 'Message blocked: Contains prohibited language, threats, or harmful advice.')
       soundFx.playBreathIn()
-      return // STRICTLY HALT - DO NOT SEND TO CHAT
+      return // STRICTLY HALT - DO NOT SEND
     }
 
-    // 2. Instant Client-Side Crisis Guard (Suicide, Self-Harm)
-    const crisis = checkCrisisTier(text)
-    if (crisis === 2) {
+    // 2. Soft Invalidation Warning (Suggested rephrase)
+    if (analysis.moderation.verdict === 'soft_flag') {
+      setActiveModWarning(analysis.moderation.reason || 'This message might feel invalidating. Consider rephrasing with empathy.')
+    }
+
+    // 3. Third-Person Helper Support Card (Case 10: "my friend keeps saying...")
+    if (analysis.helperIntent && analysis.helperAdvice) {
+      setHelperAdviceNotice(analysis.helperAdvice)
+    }
+
+    // 4. Critical Crisis Support (Tier 2) (Cases 1-8, 30)
+    if (analysis.crisisTier === 2) {
       setSelfCrisisBanner(true)
       soundFx.playBreathIn()
       return // STRICTLY HALT - DO NOT SEND TO CHAT
     }
-    if (crisis === 1) {
+
+    // 5. Mild Nudge (Tier 1) (Cases 12-14)
+    if (analysis.crisisTier === 1) {
       setInAppNudge(true)
       soundFx.playBreathIn()
     }
 
-    // 3. Dispatch message only if clean and safe
+    // 6. Clean send
     setInput('')
     if (isRecording) {
       stopListening()
@@ -365,7 +381,7 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* Moderation Warning Toast (Threats / Slurs / Profanity) */}
+      {/* Moderation Warning Toast (Threats / Slurs / Profanity / Harmful Advice) */}
       <AnimatePresence>
         {activeModWarning && (
           <motion.div
@@ -404,6 +420,40 @@ export default function Chat() {
               }}
             >
               Dismiss
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Third-Person Friend Support Guidance Card (Case 10: "my friend keeps saying...") */}
+      <AnimatePresence>
+        {helperAdviceNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              background: '#1e3a5f',
+              color: '#93c5fd',
+              borderBottom: '2px solid #3b82f6',
+              padding: '12px 18px',
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              zIndex: 90,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.2rem' }}>🤝</span>
+              <span><strong>Friend Support Guidance:</strong> {helperAdviceNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHelperAdviceNotice(null)}
+              style={{ background: 'transparent', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: '1rem' }}
+            >
+              ✕
             </button>
           </motion.div>
         )}
@@ -661,58 +711,43 @@ export default function Chat() {
             disabled={Boolean(peerLeft)}
           />
 
-          <div className="chat-input-controls">
-            {/* Inline Speech-to-Text Button */}
-            <button
-              type="button"
-              className={`chat-action-btn chat-action-btn--mic ${isRecording ? 'chat-action-btn--recording' : ''}`}
-              onClick={toggleInlineMic}
-              title={isRecording ? 'Recording active — click to stop' : 'Speech-to-Text (Hold or tap to dictate)'}
-              aria-label={isRecording ? 'Stop speech recognition' : 'Start speech recognition'}
-            >
-              {isRecording ? (
-                <span className="chat-mic-recording-wrap">
-                  <span className="chat-mic-pulse" />
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
-                  </svg>
-                </span>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" x2="12" y1="19" y2="22" />
-                </svg>
-              )}
-            </button>
+          {/* Inline Speech-to-Text Button */}
+          <button
+            type="button"
+            className={`chat-voice-btn ${isRecording ? 'chat-voice-btn--recording' : ''}`}
+            onClick={toggleInlineMic}
+            title={isRecording ? 'Listening... click to stop' : 'Tap to speak (Speech-to-Text)'}
+            aria-label="Speech to text"
+            style={{
+              color: isRecording ? '#ef4444' : 'inherit',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isRecording ? '⏹️' : '🎙️'}
+          </button>
 
-            {/* Full-Screen Ambient Voice Room Button */}
-            <button
-              type="button"
-              className="chat-action-btn chat-action-btn--voice"
-              onClick={() => navigate(`/chat/${roomId}/voice`)}
-              title="Open Immersive Voice Space"
-              aria-label="Switch to Voice Space"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
-              </svg>
-            </button>
+          {/* Full-Screen Ambient Voice Room Button */}
+          <button
+            type="button"
+            className="chat-voice-btn"
+            onClick={() => navigate(`/chat/${roomId}/voice`)}
+            title="Open Ambient Voice Room"
+            aria-label="Switch to Voice Mode"
+          >
+            🎧
+          </button>
 
-            {/* Send Message Button */}
-            <button
-              type="button"
-              className="chat-send-btn"
-              onClick={handleSend}
-              disabled={!input.trim() || Boolean(peerLeft)}
-              aria-label="Send message"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
+          <button
+            type="button"
+            className="chat-send-btn"
+            onClick={handleSend}
+            disabled={!input.trim() || Boolean(peerLeft)}
+            aria-label="Send message"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M15.5 2.5L8.5 9.5M15.5 2.5L10.5 15.5L8.5 9.5L2.5 7.5L15.5 2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       </footer>
 
