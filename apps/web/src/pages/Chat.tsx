@@ -45,6 +45,8 @@ export default function Chat() {
   const [dynamicTranslations, setDynamicTranslations] = useState<Record<string, string>>({})
   const [inAppNudge, setInAppNudge] = useState(false)
   const [activeModWarning, setActiveModWarning] = useState<string | null>(null)
+  const [peerCrisisAlert, setPeerCrisisAlert] = useState<string | null>(null)
+  const [selfCrisisBanner, setSelfCrisisBanner] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { isRecording, transcript, startListening, stopListening, speakText } = useSpeechVoice()
@@ -73,7 +75,7 @@ export default function Chat() {
     }
   }, [transcript])
 
-  // Real-time dynamic translation of peer messages into activeLang when user switches language
+  // Real-time dynamic translation of peer messages into activeLang
   useEffect(() => {
     let isCancelled = false
 
@@ -101,13 +103,19 @@ export default function Chat() {
     }
   }, [messages, activeLang, myUserId])
 
-  // Scroll to bottom on new message & play chime for peer
+  // Monitor all incoming messages for peer crisis expressions
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     if (messages.length > 0) {
       const last = messages[messages.length - 1]
       if (last.senderId !== myUserId && !last.senderId.startsWith('me')) {
         soundFx.playMessageReceived()
+
+        // Check if peer expressed thoughts of suicide or severe self-harm
+        const peerCrisis = checkCrisisTier(last.text)
+        if (peerCrisis === 2) {
+          setPeerCrisisAlert('Your conversation partner is expressing severe distress or thoughts of self-harm.')
+        }
       }
     }
   }, [messages, isPeerTyping, myUserId])
@@ -115,9 +123,9 @@ export default function Chat() {
   // Handle Crisis Alert (Tier 2) -> Instant emergency overlay
   useEffect(() => {
     if (crisisAlert && crisisAlert.tier === 2) {
-      navigate('/safety/crisis')
+      setSelfCrisisBanner(true)
     }
-  }, [crisisAlert, navigate])
+  }, [crisisAlert])
 
   // Handle Mild Nudge (Tier 1)
   useEffect(() => {
@@ -147,7 +155,7 @@ export default function Chat() {
     const text = input.trim()
     if (!text) return
 
-    // 1. Instant Client-Side Moderation Guard
+    // 1. Instant Client-Side Moderation Guard (Threats, Violence, Slurs, Harassment)
     const mod = checkModeration(text)
     if (mod.verdict === 'blocked') {
       setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited language, threats, or harassment.')
@@ -155,13 +163,12 @@ export default function Chat() {
       return // Halt immediately - do not send or clear
     }
 
-    // 2. Instant Client-Side Crisis Guard (Typo-Tolerant)
+    // 2. Instant Client-Side Crisis Guard (Suicide, Self-Harm)
     const crisis = checkCrisisTier(text)
     if (crisis === 2) {
-      navigate('/safety/crisis')
-      return
-    }
-    if (crisis === 1) {
+      setSelfCrisisBanner(true)
+      soundFx.playBreathIn()
+    } else if (crisis === 1) {
       setInAppNudge(true)
       soundFx.playBreathIn()
     }
@@ -174,6 +181,13 @@ export default function Chat() {
     sendTypingStop()
     soundFx.playMessageSent()
     await sendMessage(text)
+  }
+
+  const handleShareHelplinesWithPeer = async () => {
+    setPeerCrisisAlert(null)
+    const helplineText = "Hey... please know that you are not alone and support is always here. You can call Tele-MANAS at 14416 or KIRAN at 1800-599-0019 anytime for free confidential help."
+    await sendMessage(helplineText)
+    soundFx.playMessageSent()
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,7 +365,7 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* Moderation Warning Toast with animated entrance and manual dismiss */}
+      {/* Moderation Warning Toast (Threats / Slurs / Profanity) */}
       <AnimatePresence>
         {activeModWarning && (
           <motion.div
@@ -391,6 +405,94 @@ export default function Chat() {
             >
               Dismiss
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Peer Crisis Alert Banner (When the OTHER user says suicidal thoughts) */}
+      <AnimatePresence>
+        {peerCrisisAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              background: '#3e1515',
+              color: '#fca5a5',
+              borderBottom: '2px solid #ef4444',
+              padding: '12px 18px',
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              zIndex: 90,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+              <span><strong>Peer Distress Notice:</strong> {peerCrisisAlert}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleShareHelplinesWithPeer}
+                style={{ padding: '4px 12px', fontSize: '0.8rem', background: '#ef4444' }}
+              >
+                📞 Share 24×7 Helplines in Chat
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeerCrisisAlert(null)}
+                style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Self Crisis Support Banner (When YOU express thoughts of suicide/crisis) */}
+      <AnimatePresence>
+        {selfCrisisBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              background: '#1e293b',
+              color: '#67e8f9',
+              borderBottom: '2px solid #06b6d4',
+              padding: '12px 18px',
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              zIndex: 90,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.2rem' }}>🆘</span>
+              <span><strong>SafeSpeak Support:</strong> You are not alone. 24×7 Free Support: Tele-MANAS (14416) or Kiran (1800-599-0019).</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate('/safety/crisis')}
+                style={{ padding: '4px 12px', fontSize: '0.8rem', background: '#0891b2' }}
+              >
+                Open Crisis Tools & Helplines
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelfCrisisBanner(false)}
+                style={{ background: 'transparent', border: 'none', color: '#67e8f9', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
