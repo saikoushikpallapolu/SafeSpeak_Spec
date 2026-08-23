@@ -20,7 +20,6 @@ import AddFriend from './pages/AddFriend'
 import RoomsBrowse from './pages/RoomsBrowse'
 import GroupRoom from './pages/GroupRoom'
 import InstallPrompt from './components/common/InstallPrompt'
-import JudgeTesterDrawer from './components/common/JudgeTesterDrawer'
 
 export default function App() {
   const location = useLocation()
@@ -49,7 +48,6 @@ export default function App() {
         </Routes>
       </AnimatePresence>
       <InstallPrompt />
-      <JudgeTesterDrawer />
     </>
   )
 }
