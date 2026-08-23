@@ -45,7 +45,7 @@ export default function Chat() {
   const [activeModWarning, setActiveModWarning] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { speakText } = useSpeechVoice()
+  const { isRecording, transcript, startListening, stopListening, speakText } = useSpeechVoice()
 
   const {
     messages,
@@ -63,6 +63,13 @@ export default function Chat() {
     dismissNudge,
     resetChat,
   } = useChat(roomId, myId, myTag, activeLang)
+
+  // Sync speech recognition transcript into input bar
+  useEffect(() => {
+    if (transcript) {
+      setInput(transcript)
+    }
+  }, [transcript])
 
   // Scroll to bottom on new message & play chime for peer
   useEffect(() => {
@@ -131,6 +138,9 @@ export default function Chat() {
 
     // 3. Dispatch message
     setInput('')
+    if (isRecording) {
+      stopListening()
+    }
     sendTypingStop()
     soundFx.playMessageSent()
     await sendMessage(text)
@@ -142,6 +152,18 @@ export default function Chat() {
       sendTypingStart()
     } else {
       sendTypingStop()
+    }
+  }
+
+  const toggleInlineMic = () => {
+    if (isRecording) {
+      stopListening()
+    } else {
+      let locale = 'en-IN'
+      if (activeLang === 'Hindi') locale = 'hi-IN'
+      else if (activeLang === 'Telugu') locale = 'te-IN'
+      else if (activeLang === 'Tamil') locale = 'ta-IN'
+      startListening(locale)
     }
   }
 
@@ -333,6 +355,7 @@ export default function Chat() {
               )}
               <div>
                 <div className={`chat-bubble ${isMe ? 'chat-bubble--me' : 'chat-bubble--other'}`}>
+                  {msg.isVoice && <span style={{ marginRight: 6 }}>🎙️</span>}
                   <span>{displayText}</span>
 
                   {/* Audio playback and flag icons */}
@@ -453,7 +476,7 @@ export default function Chat() {
           <input
             type="text"
             className="chat-input font-body"
-            placeholder={`Type in any language (translated to ${activeLang})…`}
+            placeholder={isRecording ? 'Listening to your voice…' : `Type in any language (translated to ${activeLang})…`}
             value={input}
             onChange={handleInputChange}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
@@ -461,13 +484,30 @@ export default function Chat() {
             disabled={Boolean(peerLeft)}
           />
 
+          {/* Inline Speech-to-Text Button */}
           <button
+            type="button"
+            className={`chat-voice-btn ${isRecording ? 'chat-voice-btn--recording' : ''}`}
+            onClick={toggleInlineMic}
+            title={isRecording ? 'Listening... click to stop' : 'Tap to speak (Speech-to-Text)'}
+            aria-label="Speech to text"
+            style={{
+              color: isRecording ? '#ef4444' : 'inherit',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isRecording ? '⏹️' : '🎙️'}
+          </button>
+
+          {/* Full-Screen Ambient Voice Room Button */}
+          <button
+            type="button"
             className="chat-voice-btn"
             onClick={() => navigate(`/chat/${roomId}/voice`)}
-            title="Switch to Real-Time Voice State"
+            title="Open Ambient Voice Room"
             aria-label="Switch to Voice Mode"
           >
-            🎙️
+            🎧
           </button>
 
           <button

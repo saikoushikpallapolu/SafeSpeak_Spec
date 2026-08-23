@@ -2,20 +2,40 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useSpeechVoice } from '../hooks/useSafeSpeakSocket'
-import { getSocket } from '../services/socket'
+import { sendChatMessage } from '../services/firestoreChat'
+import { getOrCreateUserId } from '../services/firestoreMatching'
+import { checkModeration, checkCrisisTier } from '../services/safetyAndTranslation'
+import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
 import './VoiceState.css'
 
 export default function VoiceState() {
   const { roomId } = useParams()
   const navigate = useNavigate()
+  const myUserId = getOrCreateUserId()
+
+  const rawMatch = sessionStorage.getItem('current_match')
+  const matchData: MatchFoundPayload | null = rawMatch ? JSON.parse(rawMatch) : null
+
+  const myId = (matchData?.myCharacter || sessionStorage.getItem('character') || 'owl') as CharacterId
+  const myTag = matchData?.myTag || 'You'
+  const initialLang = matchData?.myLanguage || 'English'
+  const peerLanguage = matchData?.peerLanguage || 'English'
 
   const { isRecording, transcript, startListening, stopListening, error } = useSpeechVoice()
   const [seconds, setSeconds] = useState(0)
   const [manualText, setManualText] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
 
   useEffect(() => {
-    startListening('en-IN')
-  }, [startListening])
+    // Map initial language to speech recognition locale
+    let speechLocale = 'en-IN'
+    if (initialLang === 'Hindi') speechLocale = 'hi-IN'
+    else if (initialLang === 'Telugu') speechLocale = 'te-IN'
+    else if (initialLang === 'Tamil') speechLocale = 'ta-IN'
+
+    startListening(speechLocale)
+  }, [startListening, initialLang])
 
   useEffect(() => {
     if (transcript) {
@@ -33,17 +53,44 @@ export default function VoiceState() {
     return () => clearInterval(interval)
   }, [isRecording])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const textToSend = manualText.trim() || transcript.trim()
-    if (textToSend) {
-      const socket = getSocket()
-      socket.emit('send_message', {
-        roomId,
-        text: textToSend,
-        isVoice: true,
-      })
+    if (!textToSend || !roomId || isSending) return
+
+    // 1. AI Moderation Check
+    const mod = checkModeration(textToSend)
+    if (mod.verdict === 'blocked') {
+      setVoiceError(`⚠️ ${mod.reason || 'Message contains prohibited language or harassment.'}`)
+      return
     }
-    navigate(-1)
+
+    // 2. AI Crisis Check
+    const crisis = checkCrisisTier(textToSend)
+    if (crisis === 2) {
+      navigate('/safety/crisis')
+      return
+    }
+
+    setIsSending(true)
+    stopListening()
+
+    try {
+      await sendChatMessage(
+        roomId,
+        myUserId,
+        myId,
+        myTag,
+        initialLang,
+        textToSend,
+        true, // isVoice
+        peerLanguage
+      )
+      navigate(-1)
+    } catch (e) {
+      console.error('[SafeSpeak Voice] Send error:', e)
+      setVoiceError('Failed to send voice note. Please try again.')
+      setIsSending(false)
+    }
   }
 
   const toggleRecord = () => {
@@ -51,7 +98,12 @@ export default function VoiceState() {
       stopListening()
     } else {
       setSeconds(0)
-      startListening('en-IN')
+      setVoiceError(null)
+      let speechLocale = 'en-IN'
+      if (initialLang === 'Hindi') speechLocale = 'hi-IN'
+      else if (initialLang === 'Telugu') speechLocale = 'te-IN'
+      else if (initialLang === 'Tamil') speechLocale = 'ta-IN'
+      startListening(speechLocale)
     }
   }
 
@@ -75,7 +127,7 @@ export default function VoiceState() {
           {isRecording ? 'Listening…' : manualText ? 'Ready to send' : 'Tap mic to speak'}
         </h1>
         <p className="voice-sub font-body">
-          {error ? error : 'Speak naturally in your language. It will be transcribed and translated.'}
+          {voiceError || error || 'Speak naturally in your language. It will be transcribed and translated.'}
         </p>
 
         {/* Real-time transcribed text preview / editable input */}
@@ -110,7 +162,7 @@ export default function VoiceState() {
 
         {/* Actions */}
         <div className="voice-actions">
-          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+          <button className="btn btn-secondary" onClick={() => navigate(-1)} disabled={isSending}>
             Cancel
           </button>
           <motion.button
@@ -129,9 +181,9 @@ export default function VoiceState() {
           <button
             className="btn btn-primary"
             onClick={handleSend}
-            disabled={!manualText.trim()}
+            disabled={!manualText.trim() || isSending}
           >
-            Send Voice Note
+            {isSending ? 'Sending…' : 'Send Voice Note'}
           </button>
         </div>
       </motion.div>
