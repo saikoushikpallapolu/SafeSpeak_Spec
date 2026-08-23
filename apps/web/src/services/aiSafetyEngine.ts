@@ -29,6 +29,7 @@ export function normalizeText(raw: string): string {
     .replace(/\bocmmit|comit\b/g, 'commit')
     .replace(/\bdpressed|depresed\b/g, 'depressed')
     .replace(/\bstressd\b/g, 'stressed')
+    .replace(/\bcocain|cokane|c0caine\b/g, 'cocaine')
     // Character replacements
     .replace(/[@4]/g, 'a')
     .replace(/[3]/g, 'e')
@@ -160,6 +161,21 @@ const DANGEROUS_HEALTH_ADVICE = [
 ]
 
 // ---------------------------------------------------------------------------
+// 6. ILLICIT DRUGS, CONTROLLED SUBSTANCES & MEDICAL DRUG SUGGESTIONS
+// ---------------------------------------------------------------------------
+
+const ILLICIT_DRUGS_AND_SUBSTANCES = [
+  // Narcotics & illicit substances (Cocaine, Heroin, Meth, MDMA, Ganja, etc.)
+  /\b(cocaine|cocain|coke|heroin|meth|methamphetamine|crystal\s*meth|mdma|ecstasy|marijuana|cannabis|weed|charas|ganja|afeem|bhang|lsd|acid\s*tabs?|ketamine|fentanyl|shrooms|magic\s*mushrooms|opioids|smack|brown\s*sugar)\b/i,
+  // Suggesting prescription pharmaceuticals / psychoactive drug misuse
+  /\b(take|try|pop|buy|sell|get|have)\s+(some\s+)?(xanax|adderall|oxycodone|valium|klonopin|percocet|tramadol|ambien|benzos|benzodiazepines|morphine|codeine|sleeping\s*pills|antidepressants|painkillers)/i,
+  /\b(xanax|adderall|oxycodone|valium|klonopin|percocet|tramadol|ambien|benzodiazepines?|fentanyl)\b/i,
+  // Soliciting / offering / dealing drugs
+  /\b(sell|buy|dealing|dealer|supply|hook\s*you\s*up\s*with)\s+(drugs|pills|coke|weed|stuff|mal|maal|ganja|cocaine)/i,
+  /i\s+(will|can)\s+(sell|give|get|hook\s*you\s*up|see)\s+(you\s+)?(cocaine|drugs|weed|pills|coke)/i,
+]
+
+// ---------------------------------------------------------------------------
 // MASTER SAFETY & CRISIS EVALUATOR
 // ---------------------------------------------------------------------------
 
@@ -232,7 +248,21 @@ export function evaluateComprehensiveSafety(
     }
   }
 
-  // Step 6: Dangerous Health Advice & Misinformation (Cases 22, 23, 24)
+  // Step 6: Illicit Drugs, Narcotics & Prescription Drug Solicitation -> HARD BLOCK
+  for (const pattern of ILLICIT_DRUGS_AND_SUBSTANCES) {
+    if (pattern.test(raw) || pattern.test(normalized)) {
+      return {
+        moderation: {
+          verdict: 'blocked',
+          category: 'substance_solicitation',
+          reason: 'Message blocked: Suggesting, promoting, or offering drugs, narcotics, or prescription pharmaceuticals is strictly prohibited.',
+        },
+        crisisTier: 0,
+      }
+    }
+  }
+
+  // Step 7: Dangerous Health Advice & Misinformation (Cases 22, 23, 24)
   for (const pattern of DANGEROUS_HEALTH_ADVICE) {
     if (pattern.test(raw) || pattern.test(normalized)) {
       return {
@@ -246,7 +276,7 @@ export function evaluateComprehensiveSafety(
     }
   }
 
-  // Step 7: Passive-Aggressive Invalidation -> SOFT FLAG (Case 19)
+  // Step 8: Passive-Aggressive Invalidation -> SOFT FLAG (Case 19)
   for (const pattern of PASSIVE_AGGRESSIVE_HARASSMENT) {
     if (pattern.test(raw) || pattern.test(normalized)) {
       return {
@@ -261,7 +291,7 @@ export function evaluateComprehensiveSafety(
     }
   }
 
-  // Step 8: Active Tier 2 Crisis Detection (Single message) (Cases 1, 2, 3, 4, 5, 7, 30)
+  // Step 9: Active Tier 2 Crisis Detection (Single message) (Cases 1, 2, 3, 4, 5, 7, 30)
   for (const pattern of TIER_2_CRISIS_PATTERNS) {
     if (pattern.test(raw) || pattern.test(normalized)) {
       return {
@@ -271,8 +301,7 @@ export function evaluateComprehensiveSafety(
     }
   }
 
-  // Step 9: Multi-Message Split Crisis Check (Case 8)
-  // Evaluates last message + current message together (e.g. "I just want" / "everything to end")
+  // Step 10: Multi-Message Split Crisis Check (Case 8)
   if (recentHistory.length > 0) {
     const lastMsg = recentHistory[recentHistory.length - 1]
     const combined = `${lastMsg} ${raw}`.trim()
@@ -287,7 +316,7 @@ export function evaluateComprehensiveSafety(
       }
     }
 
-    // Step 10: Emoji-only follow up after hopelessness (Case 6)
+    // Step 11: Emoji-only follow up after hopelessness (Case 6)
     if (CRISIS_EMOJI_PATTERN.test(raw) && /hopeless|pointless|giving\s+up|sad|empty|done/i.test(lastMsg)) {
       return {
         moderation: { verdict: 'approved' },
@@ -296,7 +325,7 @@ export function evaluateComprehensiveSafety(
     }
   }
 
-  // Step 11: Mild Distress (Tier 1) (Cases 12, 13, 14)
+  // Step 12: Mild Distress (Tier 1) (Cases 12, 13, 14)
   for (const pattern of TIER_1_DISTRESS_PATTERNS) {
     if (pattern.test(raw) || pattern.test(normalized)) {
       return {
