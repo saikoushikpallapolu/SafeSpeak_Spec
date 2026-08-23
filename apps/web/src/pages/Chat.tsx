@@ -663,43 +663,58 @@ export default function Chat() {
             disabled={Boolean(peerLeft)}
           />
 
-          {/* Inline Speech-to-Text Button */}
-          <button
-            type="button"
-            className={`chat-voice-btn ${isRecording ? 'chat-voice-btn--recording' : ''}`}
-            onClick={toggleInlineMic}
-            title={isRecording ? 'Listening... click to stop' : 'Tap to speak (Speech-to-Text)'}
-            aria-label="Speech to text"
-            style={{
-              color: isRecording ? '#ef4444' : 'inherit',
-              transition: 'all 0.2s',
-            }}
-          >
-            {isRecording ? '⏹️' : '🎙️'}
-          </button>
+          <div className="chat-input-controls">
+            {/* Inline Speech-to-Text Button */}
+            <button
+              type="button"
+              className={`chat-action-btn chat-action-btn--mic ${isRecording ? 'chat-action-btn--recording' : ''}`}
+              onClick={toggleInlineMic}
+              title={isRecording ? 'Recording active — click to stop' : 'Speech-to-Text (Hold or tap to dictate)'}
+              aria-label={isRecording ? 'Stop speech recognition' : 'Start speech recognition'}
+            >
+              {isRecording ? (
+                <span className="chat-mic-recording-wrap">
+                  <span className="chat-mic-pulse" />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+                  </svg>
+                </span>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" x2="12" y1="19" y2="22" />
+                </svg>
+              )}
+            </button>
 
-          {/* Full-Screen Ambient Voice Room Button */}
-          <button
-            type="button"
-            className="chat-voice-btn"
-            onClick={() => navigate(`/chat/${roomId}/voice`)}
-            title="Open Ambient Voice Room"
-            aria-label="Switch to Voice Mode"
-          >
-            🎧
-          </button>
+            {/* Full-Screen Ambient Voice Room Button */}
+            <button
+              type="button"
+              className="chat-action-btn chat-action-btn--voice"
+              onClick={() => navigate(`/chat/${roomId}/voice`)}
+              title="Open Immersive Voice Space"
+              aria-label="Switch to Voice Space"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
+              </svg>
+            </button>
 
-          <button
-            type="button"
-            className="chat-send-btn"
-            onClick={handleSend}
-            disabled={!input.trim() || Boolean(peerLeft)}
-            aria-label="Send message"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M15.5 2.5L8.5 9.5M15.5 2.5L10.5 15.5L8.5 9.5L2.5 7.5L15.5 2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+            {/* Send Message Button */}
+            <button
+              type="button"
+              className="chat-send-btn"
+              onClick={handleSend}
+              disabled={!input.trim() || Boolean(peerLeft)}
+              aria-label="Send message"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
         </div>
       </footer>
 
