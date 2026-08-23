@@ -373,10 +373,20 @@ export default function Chat() {
             </svg>
           </button>
           
-          <button type="button" className="btn btn-ghost chat-header__btn" onClick={() => setShowExitConfirm(true)} aria-label="End chat" title="End Conversation">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M3 9l12 0M11 5l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Clear Exit / Leave Button */}
+          <button
+            type="button"
+            className="chat-header-leave-btn font-mono"
+            onClick={() => setShowExitConfirm(true)}
+            aria-label="Exit conversation"
+            title="Leave & End Conversation"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
+            <span>Exit</span>
           </button>
         </div>
       </header>
