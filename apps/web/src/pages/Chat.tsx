@@ -82,13 +82,13 @@ export default function Chat() {
       for (const m of messages) {
         if (m.senderId !== myUserId) {
           const res = await translateMessage(m.text, activeLang)
-          if (res.translatedText && res.translatedText !== m.text) {
+          if (res.translatedText) {
             updates[m.id] = res.translatedText
           }
         }
       }
       if (!isCancelled) {
-        setDynamicTranslations(prev => ({ ...prev, ...updates }))
+        setDynamicTranslations(updates)
       }
     }
 
@@ -150,12 +150,12 @@ export default function Chat() {
     // 1. Instant Client-Side Moderation Guard
     const mod = checkModeration(text)
     if (mod.verdict === 'blocked') {
-      setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited language, slurs, or harassment.')
+      setActiveModWarning(mod.reason || 'Message blocked: Contains prohibited language, threats, or harassment.')
       soundFx.playBreathIn()
       return // Halt immediately - do not send or clear
     }
 
-    // 2. Instant Client-Side Crisis Guard
+    // 2. Instant Client-Side Crisis Guard (Typo-Tolerant)
     const crisis = checkCrisisTier(text)
     if (crisis === 2) {
       navigate('/safety/crisis')
@@ -240,11 +240,12 @@ export default function Chat() {
           </div>
 
           {/* Quick Language Switcher Dropdown */}
-          <div className="chat-header-lang-container">
+          <div className="chat-header-lang-container" style={{ position: 'relative' }}>
             <button
+              type="button"
               className="chat-header__lang-badge font-mono"
               onClick={() => setShowLangDropdown(!showLangDropdown)}
-              title="Click to switch your translation language"
+              title="Click to switch your target language"
             >
               <span>🌐 {activeLang}</span>
               <span style={{ fontSize: '0.6rem', marginLeft: 4 }}>▼</span>
@@ -257,15 +258,41 @@ export default function Chat() {
                   initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 9999,
+                    background: '#18181b',
+                    border: '1px solid #3f3f46',
+                    borderRadius: '10px',
+                    padding: '6px',
+                    minWidth: '130px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.6)',
+                  }}
                 >
                   {AVAILABLE_LANGS.map((lang) => (
                     <button
                       key={lang.id}
+                      type="button"
                       className={`chat-lang-opt ${activeLang === lang.id ? 'chat-lang-opt--active' : ''}`}
                       onClick={() => {
                         setActiveLang(lang.id)
                         setShowLangDropdown(false)
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        background: activeLang === lang.id ? '#27272a' : 'transparent',
+                        color: activeLang === lang.id ? '#4ade80' : '#e4e4e7',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
                       }}
                     >
                       {lang.label}
@@ -287,6 +314,7 @@ export default function Chat() {
         <div className="chat-header__actions">
           {/* Privacy Guarantee Shield Button */}
           <button
+            type="button"
             className="btn btn-ghost chat-header__btn"
             onClick={() => setShowPrivacyModal(true)}
             aria-label="How your identity is kept private"
@@ -297,6 +325,7 @@ export default function Chat() {
 
           {/* Sound Mute Toggle */}
           <button
+            type="button"
             className="btn btn-ghost chat-header__btn"
             onClick={toggleMute}
             aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
@@ -307,14 +336,14 @@ export default function Chat() {
 
           <SOSButton />
           
-          <button className="btn btn-ghost chat-header__btn" onClick={() => navigate('/resources')} aria-label="Help resources" title="Helplines & Grounding">
+          <button type="button" className="btn btn-ghost chat-header__btn" onClick={() => navigate('/resources')} aria-label="Help resources" title="Helplines & Grounding">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.5" />
               <path d="M9 12V9M9 6.5V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
           
-          <button className="btn btn-ghost chat-header__btn" onClick={() => setShowExitConfirm(true)} aria-label="End chat" title="End Conversation">
+          <button type="button" className="btn btn-ghost chat-header__btn" onClick={() => setShowExitConfirm(true)} aria-label="End chat" title="End Conversation">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3 9l12 0M11 5l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -348,6 +377,7 @@ export default function Chat() {
               <span><strong>Safety Notice:</strong> {activeModWarning}</span>
             </div>
             <button
+              type="button"
               onClick={() => setActiveModWarning(null)}
               style={{
                 background: 'rgba(255,255,255,0.15)',
@@ -403,6 +433,7 @@ export default function Chat() {
                   {!isMe && (
                     <div className="chat-bubble-actions">
                       <button
+                        type="button"
                         className="chat-bubble-tts-btn"
                         onClick={() => speakText(displayText, activeLang)}
                         title="Read aloud"
@@ -411,6 +442,7 @@ export default function Chat() {
                         🔊
                       </button>
                       <button
+                        type="button"
                         className="chat-bubble-flag-btn"
                         onClick={() => navigate('/report')}
                         title="Report message"
@@ -426,6 +458,7 @@ export default function Chat() {
                   <span className="chat-bubble__time">{msg.time}</span>
                   {hasTranslation && (
                     <button
+                      type="button"
                       className="chat-bubble-translate-toggle font-mono"
                       onClick={() => toggleOriginal(msg.id)}
                     >
@@ -471,6 +504,7 @@ export default function Chat() {
                 <p className="chat-nudge__body font-body">Take a slow deep breath with me before continuing.</p>
                 <div className="chat-nudge__actions">
                   <button
+                    type="button"
                     className="btn btn-ghost chat-nudge__btn"
                     onClick={() => {
                       setInAppNudge(false)
@@ -479,7 +513,7 @@ export default function Chat() {
                   >
                     I'm okay, continue
                   </button>
-                  <button className="btn chat-nudge__btn-support" onClick={() => navigate('/safety/crisis')}>
+                  <button type="button" className="btn chat-nudge__btn-support" onClick={() => navigate('/safety/crisis')}>
                     I'd like helpline resources
                   </button>
                 </div>
@@ -498,10 +532,10 @@ export default function Chat() {
             <p className="chat-peer-left__title">Your conversation partner has left the chat.</p>
             <p className="chat-peer-left__sub">Take all the time you need. You can find a new match or take a quiet moment.</p>
             <div className="chat-peer-left__actions">
-              <button className="btn btn-primary" onClick={handleFindNewMatch}>
+              <button type="button" className="btn btn-primary" onClick={handleFindNewMatch}>
                 Find a new peer
               </button>
-              <button className="btn btn-ghost" onClick={handleGoToRooms}>
+              <button type="button" className="btn btn-ghost" onClick={handleGoToRooms}>
                 Browse themed rooms
               </button>
             </div>
@@ -552,6 +586,7 @@ export default function Chat() {
           </button>
 
           <button
+            type="button"
             className="chat-send-btn"
             onClick={handleSend}
             disabled={!input.trim() || Boolean(peerLeft)}
@@ -618,7 +653,7 @@ export default function Chat() {
                 </div>
               </div>
               <div className="chat-modal__actions" style={{ marginTop: '20px' }}>
-                <button className="btn btn-primary" onClick={() => setShowPrivacyModal(false)} style={{ width: '100%' }}>
+                <button type="button" className="btn btn-primary" onClick={() => setShowPrivacyModal(false)} style={{ width: '100%' }}>
                   Got it, thank you
                 </button>
               </div>
@@ -647,10 +682,10 @@ export default function Chat() {
               <h3 className="font-display">Ready to wrap up?</h3>
               <p className="font-body">Ending the conversation will take you to your personal reflection summary. No chat transcripts are ever saved.</p>
               <div className="chat-modal__actions">
-                <button className="btn btn-ghost" onClick={() => setShowExitConfirm(false)}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowExitConfirm(false)}>
                   Stay in chat
                 </button>
-                <button className="btn btn-primary" onClick={handleConfirmEnd}>
+                <button type="button" className="btn btn-primary" onClick={handleConfirmEnd}>
                   End conversation
                 </button>
               </div>
