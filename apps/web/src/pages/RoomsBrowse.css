@@ -1,5 +1,5 @@
 /* ============================================================
-   SafeSpeak — Peer Discussion Groups (Production Text-First UI)
+   SafeSpeak — Session Hub & Mode Switcher (Production UI)
    ============================================================ */
 
 .rooms-page {
@@ -76,10 +76,49 @@
   gap: 12px;
 }
 
+/* Tabs */
+.rooms-tabs-wrap {
+  padding-top: 20px;
+}
+
+.rooms-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: #121215;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.rooms-tab {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: #71717A;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-weight: 500;
+}
+
+.rooms-tab:hover {
+  color: #FFFFFF;
+}
+
+.rooms-tab--active {
+  background: #27272A;
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
 /* Hero Section */
 .rooms-hero {
-  padding-top: 36px;
-  padding-bottom: 20px;
+  padding-top: 24px;
+  padding-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -109,7 +148,7 @@
 }
 
 .rooms-hero__heading {
-  font-size: clamp(1.4rem, 2.4vw, 1.85rem);
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
   font-weight: 600;
   line-height: 1.25;
   color: #FFFFFF;
@@ -249,6 +288,149 @@
 
 .room-card:hover .room-card__enter {
   text-decoration: underline;
+}
+
+/* 1-on-1 Tab Hero Card */
+.oneonone-container {
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+
+.oneonone-card {
+  background: #111113;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.oneonone-card__companion {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.oneonone-card__avatar-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #1A1A1E;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.oneonone-card__char-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.oneonone-card__label {
+  font-size: 0.68rem;
+  color: #71717A;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.oneonone-card__char-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.oneonone-change-btn {
+  background: none;
+  border: none;
+  color: #A1A1AA;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  margin-top: 2px;
+  transition: color 0.18s;
+}
+
+.oneonone-change-btn:hover {
+  color: #FFFFFF;
+  text-decoration: underline;
+}
+
+.oneonone-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.oneonone-card__heading {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.oneonone-card__desc {
+  font-size: 0.92rem;
+  color: #A1A1AA;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.oneonone-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.oneonone-feat-pill {
+  font-size: 0.72rem;
+  color: #D4D4D8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.oneonone-actions {
+  padding-top: 8px;
+}
+
+.oneonone-primary-btn {
+  padding: 14px 28px;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #09090B;
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  width: 100%;
+}
+
+.oneonone-primary-btn:hover {
+  background: #E4E4E7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
+}
+
+@media (min-width: 640px) {
+  .oneonone-primary-btn {
+    width: fit-content;
+  }
 }
 
 /* Footer */
