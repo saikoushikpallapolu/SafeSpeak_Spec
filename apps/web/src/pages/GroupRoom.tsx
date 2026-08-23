@@ -1,22 +1,55 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { useGroupRoom } from '../hooks/useSafeSpeakSocket'
-import { getCharacterById } from '../data/characters'
+import { getCharacterById, CHARACTERS } from '../data/characters'
 import type { CharacterId } from '@safespeak/shared-types'
+import SOSButton from '../components/common/SOSButton'
 import './GroupRoom.css'
 
-const DEFAULT_GROUP_SEED: Record<string, any[]> = {
+interface SeedMessage {
+  id: string
+  text: string
+  senderTag: string
+  senderCharacter: string
+  time: string
+}
+
+const DEFAULT_GROUP_SEED: Record<string, SeedMessage[]> = {
   exam: [
-    { id: 's1', text: "Just found this room and honestly needed it so much right now.", senderTag: 'GentleDeer#2234', senderCharacter: 'deer', time: '9:30' },
-    { id: 's2', text: "Same. Board exams in 3 weeks. I genuinely can't focus for more than 10 minutes.", senderTag: 'StressedOwl#4821', senderCharacter: 'owl', time: '9:31' },
-    { id: 's3', text: "Mujhe lag raha tha mai hi aisa feel kar raha hoon. Good to know I'm not alone.", senderTag: 'QuietPanda#3847', senderCharacter: 'panda', time: '9:32' },
-    { id: 's4', text: "The 10-minute thing is real. I set a timer now — 10 min, short break, repeat.", senderTag: 'ShyRabbit#1102', senderCharacter: 'rabbit', time: '9:33' },
+    { id: 's1', text: "Just joined this space. Really needed a place to talk through exam stress.", senderTag: 'Echo#2234', senderCharacter: 'deer', time: '09:30' },
+    { id: 's2', text: "Finals are in two weeks and my concentration has been completely scattered.", senderTag: 'Stardust#4821', senderCharacter: 'owl', time: '09:31' },
+    { id: 's3', text: "I kept feeling like I was the only one falling behind. Good to know I'm not alone in this.", senderTag: 'Cosmo#3847', senderCharacter: 'panda', time: '09:32' },
+    { id: 's4', text: "Breaking review sessions into 25-minute intervals helped lower the panic for me.", senderTag: 'Mochi#1102', senderCharacter: 'rabbit', time: '09:33' },
   ],
   night: [
-    { id: 'n1', text: "Why does the brain wait until 3am to replay every awkward moment?", senderTag: 'NightOwl#1029', senderCharacter: 'owl', time: '3:04' },
-    { id: 'n2', text: "Can't turn my mind off either. Listening to the quiet helps a little though.", senderTag: 'QuietPanda#8841', senderCharacter: 'panda', time: '3:06' },
+    { id: 'n1', text: "The house is completely quiet but my thoughts are replaying past conversations.", senderTag: 'Stardust#1029', senderCharacter: 'owl', time: '03:04' },
+    { id: 'n2', text: "Listening to ambient rain audio right now. Helps slow the racing thoughts a bit.", senderTag: 'Cosmo#8841', senderCharacter: 'panda', time: '03:06' },
   ],
+  city: [
+    { id: 'c1', text: "Moved to a new city two weeks ago. The silence in the apartment hits hard in the evening.", senderTag: 'Echo#9912', senderCharacter: 'deer', time: '20:15' },
+    { id: 'c2', text: "Finding a regular coffee spot helped me establish a small anchor point. Take it day by day.", senderTag: 'Haze#3310', senderCharacter: 'capybara', time: '20:18' },
+  ],
+  habit: [
+    { id: 'h1', text: "Day 4 of resetting my daily routine. Evenings are definitely the hardest checkpoint.", senderTag: 'Pebble#5541', senderCharacter: 'penguin', time: '19:40' },
+    { id: 'h2', text: "Small continuous wins matter. Be patient with yourself when the urge creeps in.", senderTag: 'Echo#1129', senderCharacter: 'deer', time: '19:44' },
+  ],
+  body: [
+    { id: 'b1', text: "Catching my reflection in windows still triggers automatic comparison. Working on gentle neutrality.", senderTag: 'Mochi#4420', senderCharacter: 'rabbit', time: '18:10' },
+    { id: 'b2', text: "Unfollowing curated highlight accounts was an immediate relief for my mental space.", senderTag: 'Stardust#8831', senderCharacter: 'owl', time: '18:15' },
+  ],
+  work: [
+    { id: 'w1', text: "Constantly feeling like everything is urgent. Struggling to disconnect after work hours.", senderTag: 'Haze#7719', senderCharacter: 'capybara', time: '19:02' },
+    { id: 'w2', text: "Setting a strict notification cutoff in the evening gave me my peace back. Highly recommend.", senderTag: 'Echo#6620', senderCharacter: 'deer', time: '19:07' },
+  ],
+}
+
+const ROOM_NAMES: Record<string, { title: string; category: string }> = {
+  exam: { title: 'Academic & Exam Stress', category: 'Academics' },
+  city: { title: 'New in the City', category: 'Relocation' },
+  habit: { title: 'Habit Reset & Accountability', category: 'Wellness' },
+  night: { title: 'Late Night Thoughts', category: 'Quiet Hours' },
+  body: { title: 'Self-Perception & Esteem', category: 'Identity' },
+  work: { title: 'Career & Workplace Pressure', category: 'Professional' },
 }
 
 export default function GroupRoom() {
@@ -24,8 +57,8 @@ export default function GroupRoom() {
   const navigate = useNavigate()
 
   const myId = (sessionStorage.getItem('character') || 'owl') as CharacterId
-  const me = getCharacterById(myId)
-  const myTag = `${me?.name || 'User'}#${Math.floor(1000 + Math.random() * 9000)}`
+  const me = getCharacterById(myId) || CHARACTERS[0]
+  const myTag = sessionStorage.getItem('user_tag') || `${me.name}#${Math.floor(1000 + Math.random() * 9000)}`
 
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -46,16 +79,7 @@ export default function GroupRoom() {
     }
   }, [crisisAlert, navigate])
 
-  const roomNames: Record<string, string> = {
-    exam: 'Exam Stress',
-    city: 'New to a City',
-    habit: 'Quitting a Habit',
-    night: '3am Thoughts',
-    body: 'Body Image',
-    work: 'Work Pressure',
-  }
-
-  const roomName = roomNames[roomId] || 'Themed Room'
+  const roomInfo = ROOM_NAMES[roomId] || { title: 'Community Discussion', category: 'General' }
 
   const handleSend = () => {
     if (!input.trim()) return
@@ -65,72 +89,112 @@ export default function GroupRoom() {
 
   return (
     <div className="grouproom-page">
+      {/* Top Header Bar */}
       <header className="grouproom-header">
-        <button className="btn btn-ghost" onClick={() => navigate('/rooms')} aria-label="Back to rooms">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M11 14L6 9l5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <div className="grouproom-header__center">
-          <h1 className="grouproom-header__name">{roomName}</h1>
-          <div className="grouproom-header__avatars">
-            {['🦌', '🦉', '🐼', '🐰'].map((e, i) => (
-              <span key={i} className="grouproom-avatar">{e}</span>
-            ))}
-            <span className="grouproom-count-badge font-mono">+{activeCount} live</span>
+        <div className="grouproom-header__left">
+          <button
+            className="grouproom-back-btn font-mono"
+            onClick={() => navigate('/rooms')}
+            aria-label="Back to channels"
+          >
+            ← Channels
+          </button>
+
+          <div className="grouproom-header__info">
+            <div className="grouproom-header__title-row">
+              <h1 className="grouproom-header__title">{roomInfo.title}</h1>
+              <span className="grouproom-header__badge font-mono">{roomInfo.category}</span>
+            </div>
+            <div className="grouproom-header__meta font-mono">
+              <span className="live-dot" />
+              <span>{activeCount || 12} peers active</span>
+              <div className="grouproom-header__avatars" title="Active companions in space">
+                {CHARACTERS.slice(0, 4).map((c) => (
+                  <span key={c.id} className="grouproom-mini-avatar">{c.emoji}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-        <button className="btn btn-ghost" onClick={() => navigate('/resources')} aria-label="Help">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M9 12V9M9 6.5V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+
+        <div className="grouproom-header__right">
+          <SOSButton />
+          <button
+            className="grouproom-info-btn font-mono"
+            onClick={() => navigate('/resources')}
+            aria-label="Resources"
+          >
+            Resources
+          </button>
+        </div>
       </header>
 
-      <div className="grouproom-messages" role="log">
-        {allMessages.map((msg) => {
-          const char = getCharacterById(msg.senderCharacter)
-          const emoji = char ? char.emoji : '👤'
+      {/* Main Chat Message Feed */}
+      <div className="grouproom-feed" role="log" aria-live="polite">
+        {/* Security Banner */}
+        <div className="grouproom-banner font-mono">
+          <span>Encrypted anonymous channel • Zero logs stored</span>
+        </div>
+
+        {allMessages.map((msg, index) => {
+          const isMe = msg.senderTag === myTag || msg.senderCharacter === myId && index >= seed.length
+          const char = getCharacterById(msg.senderCharacter) || CHARACTERS.find(c => c.name.toLowerCase() === (msg.senderTag.split('#')[0] || '').toLowerCase()) || me
 
           return (
-            <motion.div
-              key={msg.id}
-              className="grouproom-msg"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div
+              key={msg.id || index}
+              className={`grouproom-item ${isMe ? 'grouproom-item--me' : ''}`}
             >
-              <span className="grouproom-msg__avatar">{emoji}</span>
-              <div className="grouproom-msg__content">
-                <span className="grouproom-msg__tag font-mono">{msg.senderTag}</span>
-                <p className="grouproom-msg__text font-body">{msg.text}</p>
+              <div className="grouproom-item__bubble-row">
+                {!isMe && (
+                  <div className="grouproom-avatar" title={char.name} aria-hidden>
+                    {char.emoji}
+                  </div>
+                )}
+
+                <div className="grouproom-item__content">
+                  <div className="grouproom-item__header font-mono">
+                    <span className="grouproom-item__author">{isMe ? `You (${me.name})` : msg.senderTag}</span>
+                    <span className="grouproom-item__time">{msg.time}</span>
+                  </div>
+                  <div className="grouproom-item__bubble">
+                    <p className="grouproom-item__text">{msg.text}</p>
+                  </div>
+                </div>
+
+                {isMe && (
+                  <div className="grouproom-avatar grouproom-avatar--me" title={me.name} aria-hidden>
+                    {me.emoji}
+                  </div>
+                )}
               </div>
-              <span className="grouproom-msg__time font-mono">{msg.time}</span>
-            </motion.div>
+            </div>
           )
         })}
         <div ref={bottomRef} />
       </div>
 
-      <div className="grouproom-input-bar">
-        <input
-          className="input grouproom-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-          placeholder={`Share anonymously with ${roomName}…`}
-        />
-        <button
-          className="chat-input__send"
-          onClick={handleSend}
-          disabled={!input.trim()}
-          aria-label="Send"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M2 9l14-7-7 14V9H2z" fill="currentColor" />
-          </svg>
-        </button>
-      </div>
+      {/* Input Bar */}
+      <footer className="grouproom-input-bar">
+        <div className="grouproom-input-box">
+          <input
+            className="grouproom-input-field"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder={`Type a message in ${roomInfo.title}…`}
+            aria-label="Group message"
+          />
+          <button
+            className="grouproom-submit-btn font-mono"
+            onClick={handleSend}
+            disabled={!input.trim()}
+            aria-label="Send message"
+          >
+            Send
+          </button>
+        </div>
+      </footer>
     </div>
   )
 }
