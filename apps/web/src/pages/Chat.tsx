@@ -6,6 +6,7 @@ import { useChat, useSpeechVoice } from '../hooks/useSafeSpeakSocket'
 import { soundFx } from '../services/soundFx'
 import SOSButton from '../components/common/SOSButton'
 import type { CharacterId, MatchFoundPayload } from '@safespeak/shared-types'
+import { getOrCreateUserId } from '../services/firestoreMatching'
 import './Chat.css'
 
 const AVAILABLE_LANGS = [
@@ -19,6 +20,7 @@ const AVAILABLE_LANGS = [
 export default function Chat() {
   const { roomId = 'default_room' } = useParams()
   const navigate = useNavigate()
+  const myUserId = getOrCreateUserId()
 
   const rawMatch = sessionStorage.getItem('current_match')
   const matchData: MatchFoundPayload | null = rawMatch ? JSON.parse(rawMatch) : null
@@ -39,6 +41,7 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [showOriginalMap, setShowOriginalMap] = useState<Record<string, boolean>>({})
   const [inAppNudge, setInAppNudge] = useState(false)
+  const [activeModWarning, setActiveModWarning] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { speakText } = useSpeechVoice()
@@ -65,11 +68,11 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     if (messages.length > 0) {
       const last = messages[messages.length - 1]
-      if (last.senderCharacter !== myId && !last.senderId.startsWith('me')) {
+      if (last.senderId !== myUserId && !last.senderId.startsWith('me')) {
         soundFx.playMessageReceived()
       }
     }
-  }, [messages, isPeerTyping, myId])
+  }, [messages, isPeerTyping, myUserId])
 
   // Handle Crisis Alert (Tier 2) -> Instant emergency overlay
   useEffect(() => {
@@ -85,6 +88,15 @@ export default function Chat() {
       soundFx.playBreathIn()
     }
   }, [nudgeAlert])
+
+  // Handle Moderation Warning Toast with auto-dismiss
+  useEffect(() => {
+    if (moderationBlocked?.reason) {
+      setActiveModWarning(moderationBlocked.reason)
+      const t = setTimeout(() => setActiveModWarning(null), 5000)
+      return () => clearTimeout(t)
+    }
+  }, [moderationBlocked])
 
   // Handle Chat Ended
   useEffect(() => {
@@ -193,7 +205,7 @@ export default function Chat() {
             <div className="chat-avatar" style={{ background: `radial-gradient(circle, ${other.accentColor}33, ${other.accentColor}11)`, border: `1.5px solid ${other.accentColor}55` }}>
               {other.emoji}
             </div>
-            <span className="chat-header__them">{other.name}</span>
+            <span className="chat-header__them">{matchData?.peerTag || other.name}</span>
           </div>
         </div>
 
@@ -227,14 +239,31 @@ export default function Chat() {
 
       {/* Moderation Warning Toast */}
       <AnimatePresence>
-        {moderationBlocked && (
+        {activeModWarning && (
           <motion.div
             className="chat-mod-warning font-mono"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            style={{
+              background: '#451a1a',
+              color: '#fca5a5',
+              borderBottom: '1px solid #7f1d1d',
+              padding: '10px 16px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
           >
-            ⚠️ {moderationBlocked.reason}
+            <span>⚠️ {activeModWarning}</span>
+            <button
+              onClick={() => setActiveModWarning(null)}
+              style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: '1rem', marginLeft: '8px' }}
+            >
+              ✕
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -247,7 +276,9 @@ export default function Chat() {
         </div>
 
         {messages.map((msg) => {
-          const isMe = msg.senderCharacter === myId || msg.senderId.startsWith('me')
+          // Precise isMe check based on unique userId
+          const isMe = msg.senderId === myUserId || msg.senderId.startsWith('me')
+          const senderChar = getCharacterById(msg.senderCharacter) || (isMe ? me : other)
           const showOriginal = showOriginalMap[msg.id]
           const displayText = showOriginal ? msg.text : (msg.translatedText || msg.text)
           const hasTranslation = msg.translatedText && msg.translatedText !== msg.text
@@ -261,8 +292,8 @@ export default function Chat() {
               transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
             >
               {!isMe && (
-                <div className="chat-avatar-mini" style={{ background: `${other.accentColor}22`, border: `1px solid ${other.accentColor}44` }}>
-                  {other.emoji}
+                <div className="chat-avatar-mini" style={{ background: `${senderChar.accentColor}22`, border: `1px solid ${senderChar.accentColor}44` }}>
+                  {senderChar.emoji}
                 </div>
               )}
               <div>
@@ -321,7 +352,7 @@ export default function Chat() {
             <div className="chat-typing-dots">
               <span /><span /><span />
             </div>
-            <span className="chat-typing-text font-mono">{other.name} is typing…</span>
+            <span className="chat-typing-text font-mono">{matchData?.peerTag || other.name} is typing…</span>
           </motion.div>
         )}
 
@@ -358,104 +389,94 @@ export default function Chat() {
           )}
         </AnimatePresence>
 
+        {/* Peer Left Notice */}
+        {peerLeft && (
+          <motion.div
+            className="chat-peer-left"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <p className="chat-peer-left__title">Your conversation partner has left the chat.</p>
+            <p className="chat-peer-left__sub">Take all the time you need. You can find a new match or take a quiet moment.</p>
+            <div className="chat-peer-left__actions">
+              <button className="btn btn-primary" onClick={handleFindNewMatch}>
+                Find a new peer
+              </button>
+              <button className="btn btn-ghost" onClick={handleGoToRooms}>
+                Browse themed rooms
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
-      {/* Message Input Bar */}
-      <div className="chat-input-bar">
+      {/* Input Bar */}
+      <footer className="chat-input-bar">
         <div className="chat-input-wrap">
           <input
-            className="chat-input"
+            type="text"
+            className="chat-input font-body"
+            placeholder={`Type in any language (translated to ${activeLang})…`}
             value={input}
             onChange={handleInputChange}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder={`Type in any language (translated to ${activeLang})…`}
-            aria-label="Message input"
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            aria-label="Chat message input"
             disabled={Boolean(peerLeft)}
           />
+
           <button
-            className="chat-input__voice"
+            className="chat-voice-btn"
             onClick={() => navigate(`/chat/${roomId}/voice`)}
-            aria-label="Voice input"
-            title="Speak voice note"
-            disabled={Boolean(peerLeft)}
+            title="Switch to Real-Time Voice State"
+            aria-label="Switch to Voice Mode"
+          >
+            🎙️
+          </button>
+
+          <button
+            className="chat-send-btn"
+            onClick={handleSend}
+            disabled={!input.trim() || Boolean(peerLeft)}
+            aria-label="Send message"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <rect x="6.5" y="1.5" width="5" height="9" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M3 9.5c0 3.314 2.686 6 6 6s6-2.686 6-6M9 15.5V17.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M15.5 2.5L8.5 9.5M15.5 2.5L10.5 15.5L8.5 9.5L2.5 7.5L15.5 2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
-        <motion.button
-          className="chat-input__send"
-          onClick={handleSend}
-          disabled={!input.trim() || Boolean(peerLeft)}
-          whileTap={{ scale: 0.9 }}
-          aria-label="Send message"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M2 9l14-7-7 14V9H2z" fill="currentColor" />
-          </svg>
-        </motion.button>
-      </div>
+      </footer>
 
-      {/* Peer Left Modal / Card */}
-      <AnimatePresence>
-        {peerLeft && (
-          <div className="chat-peer-left-backdrop">
-            <motion.div
-              className="chat-peer-left-card"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-            >
-              <div className="peer-left-avatar">{other.emoji}</div>
-              <h2 className="peer-left-title font-display">Conversation Concluded</h2>
-              <p className="peer-left-body font-body">
-                Your conversation partner has left the chat. Every session on SafeSpeak is strictly one-time and unlinked. Nothing has been saved.
-              </p>
-              <div className="peer-left-actions">
-                <button className="btn btn-primary" onClick={handleFindNewMatch}>
-                  <span>⚡ Find a New Match</span>
-                </button>
-                <button className="btn btn-secondary" onClick={handleGoToRooms}>
-                  <span>🌐 Join a Themed Room</span>
-                </button>
-                <button className="btn btn-ghost font-mono" onClick={() => navigate('/reflection')}>
-                  View Reflection Card →
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Exit Confirmation Modal */}
+      {/* Exit Confirmation Dialog */}
       <AnimatePresence>
         {showExitConfirm && (
-          <div className="chat-exit-backdrop" onClick={() => setShowExitConfirm(false)}>
+          <motion.div
+            className="chat-modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowExitConfirm(false)}
+          >
             <motion.div
-              className="chat-exit-card"
+              className="chat-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
             >
-              <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#FFFFFF' }}>End this conversation?</h3>
-              <p className="font-body" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '8px 0 16px' }}>
-                Your chat with this person will permanently close and no messages are retained. You can start fresh with a new match anytime.
-              </p>
-              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowExitConfirm(false)}>
-                  Cancel
+              <h3 className="font-display">Ready to wrap up?</h3>
+              <p className="font-body">Ending the conversation will take you to your personal reflection summary. No chat transcripts are ever saved.</p>
+              <div className="chat-modal__actions">
+                <button className="btn btn-ghost" onClick={() => setShowExitConfirm(false)}>
+                  Stay in chat
                 </button>
-                <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleConfirmEnd}>
-                  End Session
+                <button className="btn btn-primary" onClick={handleConfirmEnd}>
+                  End conversation
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
